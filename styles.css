@@ -1,0 +1,30 @@
+:root{
+  --canvas-w:1200px;
+  --canvas-h:900px;
+  --box-w:160px;
+  --box-h:70px;
+  --box-bg:#f7f9fc;
+  --box-border:#2b6cb0;
+}
+html,body{height:100%;margin:0;font-family:Arial,Helvetica,sans-serif;background:#fff}
+.canvas{position:relative;width:var(--canvas-w);height:var(--canvas-h);margin:20px auto;border:1px solid #ddd;background:linear-gradient(#fff,#f8fbff)}
+.svg-overlay{position:absolute;left:0;top:0;pointer-events:none}
+.box{position:absolute;width:var(--box-w);height:var(--box-h);background:var(--box-bg);border:2px solid var(--box-border);border-radius:6px;box-shadow:0 6px 12px rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:center}
+.box .title{font-weight:700;color:#0b3b58}
+
+/* Positions from plan (desktop 1200x900) */
+#system{left:520px;top:40px}
+#user{left:120px;top:160px}
+#address{left:120px;top:260px}
+#client{left:320px;top:160px}
+#employee{left:720px;top:160px}
+#manager{left:880px;top:160px}
+#schedule{left:480px;top:360px}
+#appointment{left:640px;top:360px}
+#notification{left:640px;top:480px}
+
+/* small responsive: scale canvas to fit */
+@media (max-width:1200px){
+  .canvas{transform:scale(calc(100vw/1200));transform-origin:top left}
+}
+

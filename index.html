@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>UML Diagram - Simple Site</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="canvas" class="canvas">
+    <!-- SVG overlay for connection lines -->
+    <svg id="svg-overlay" class="svg-overlay" width="1200" height="900" aria-hidden="true"></svg>
+
+    <!-- Boxes (absolutely positioned via CSS) -->
+    <div class="box" id="system"><div class="title">System</div></div>
+    <div class="box" id="user"><div class="title">User</div></div>
+    <div class="box" id="address"><div class="title">Address</div></div>
+    <div class="box" id="client"><div class="title">Client</div></div>
+    <div class="box" id="employee"><div class="title">Employee</div></div>
+    <div class="box" id="manager"><div class="title">Manager</div></div>
+    <div class="box" id="schedule"><div class="title">Schedule</div></div>
+    <div class="box" id="appointment"><div class="title">Appointment</div></div>
+    <div class="box" id="notification"><div class="title">Notification</div></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
