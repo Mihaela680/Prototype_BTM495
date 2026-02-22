@@ -1,15 +1,25 @@
 // Front-end script for homepage, login and calendar pages
 // Behavior summary:
-// - On homepage, double-click #login-btn navigates to /login
+// - On homepage, click #login-btn or service boxes to navigate to /login
 // - On /login, submit sends credentials to /api/login and redirects to /calendar on success
 // - On /calendar, load employees, show availability for chosen date/employee, and allow booking
 
 function el(id){return document.getElementById(id)}
 
-// Detect page by presence of key elements
+// ============= HOMEPAGE BEHAVIOUR =============
 if(el('login-btn') && window.location.pathname === '/'){
-  // homepage behaviour: dblclick login to go to /login
-  el('login-btn').addEventListener('dblclick', ()=>{ window.location.href = '/login'; });
+  // login button: click to go to /login
+  el('login-btn').addEventListener('click', ()=>{ window.location.href = '/login'; });
+
+  // service boxes: click to go to /login
+  const serviceWindows = el('service-windows');
+  const serviceGutters = el('service-gutters');
+  if(serviceWindows) serviceWindows.addEventListener('click', ()=>{ window.location.href = '/login'; });
+  if(serviceGutters) serviceGutters.addEventListener('click', ()=>{ window.location.href = '/login'; });
+
+  // add cursor pointer to service boxes for better UX
+  if(serviceWindows) serviceWindows.style.cursor = 'pointer';
+  if(serviceGutters) serviceGutters.style.cursor = 'pointer';
 }
 
 if(window.location.pathname === '/login'){
