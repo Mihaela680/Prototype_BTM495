@@ -7,21 +7,77 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div id="canvas" class="canvas">
-    <!-- SVG overlay for connection lines -->
-    <svg id="svg-overlay" class="svg-overlay" width="1200" height="900" aria-hidden="true"></svg>
+  <!-- Header with login control -->
+  <header class="site-header">
+    <div class="header-left">Appointment Prototype</div>
+    <div class="header-right">
+      <span id="user-greeting" class="user-greeting" hidden></span>
+      <button id="login-btn">Log in</button>
+      <button id="logout-btn" hidden>Log out</button>
+    </div>
+  </header>
 
-    <!-- Boxes (absolutely positioned via CSS) -->
-    <div class="box" id="system"><div class="title">System</div></div>
-    <div class="box" id="user"><div class="title">User</div></div>
-    <div class="box" id="address"><div class="title">Address</div></div>
-    <div class="box" id="client"><div class="title">Client</div></div>
-    <div class="box" id="employee"><div class="title">Employee</div></div>
-    <div class="box" id="manager"><div class="title">Manager</div></div>
-    <div class="box" id="schedule"><div class="title">Schedule</div></div>
-    <div class="box" id="appointment"><div class="title">Appointment</div></div>
-    <div class="box" id="notification"><div class="title">Notification</div></div>
-  </div>
+  <main>
+    <section id="auth-area">
+      <!-- Login modal -->
+      <div id="login-modal" class="modal" hidden>
+        <div class="modal-content">
+          <h3>Log in</h3>
+          <label>Username <input id="login-username" type="text" autocomplete="username"></label>
+          <label>Password <input id="login-password" type="password" autocomplete="current-password"></label>
+          <div class="login-actions">
+            <button id="login-submit">Sign in</button>
+            <button id="login-cancel">Cancel</button>
+          </div>
+          <div id="login-error" class="error" hidden></div>
+          <p class="hint">Demo users: client1/pass (client), emp1/pass (employee), emp2/pass (employee)</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="app-area">
+      <!-- Client view -->
+      <div id="client-view" class="app-view" hidden>
+        <h2>Book an appointment (Client)</h2>
+        <div class="controls">
+          <label>Date <input id="client-date" type="date"></label>
+          <label>Employee
+            <select id="client-employee"></select>
+          </label>
+        </div>
+        <div id="time-slots" class="time-slots"></div>
+        <div id="client-message" class="message" hidden></div>
+      </div>
+
+      <!-- Employee view -->
+      <div id="employee-view" class="app-view" hidden>
+        <h2>My Week (Employee)</h2>
+        <div class="week-controls">
+          <button id="week-prev">Prev Week</button>
+          <label for="week-date">Week start <input id="week-date" type="date"></label>
+          <button id="week-next">Next Week</button>
+        </div>
+        <div id="week-grid" class="week-grid" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- Existing canvas with the UML boxes and SVG overlay -->
+    <div id="canvas" class="canvas">
+      <!-- SVG overlay for connection lines -->
+      <svg id="svg-overlay" class="svg-overlay" width="1200" height="900" aria-hidden="true"></svg>
+
+      <!-- Boxes (absolutely positioned via CSS) -->
+      <div class="box" id="system"><div class="title">System</div></div>
+      <div class="box" id="user"><div class="title">User</div></div>
+      <div class="box" id="address"><div class="title">Address</div></div>
+      <div class="box" id="client"><div class="title">Client</div></div>
+      <div class="box" id="employee"><div class="title">Employee</div></div>
+      <div class="box" id="manager"><div class="title">Manager</div></div>
+      <div class="box" id="schedule"><div class="title">Schedule</div></div>
+      <div class="box" id="appointment"><div class="title">Appointment</div></div>
+      <div class="box" id="notification"><div class="title">Notification</div></div>
+    </div>
+  </main>
 
   <script src="script.js"></script>
 </body>
