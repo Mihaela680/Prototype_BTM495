@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Login - Appointment Prototype</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-left">My Cleaning Business</div>
+    <div class="header-right">
+      <button id="back-home">Home</button>
+    </div>
+  </header>
+
+  <main class="login-main">
+    <form id="login-form" class="login-form" onsubmit="return false;">
+      <h2>Log in</h2>
+      <label>Username <input id="login-username" type="text" autocomplete="username"></label>
+      <label>Password <input id="login-password" type="password" autocomplete="current-password"></label>
+      <div class="login-actions">
+        <button id="login-submit">Sign in</button>
+      </div>
+      <div id="login-error" class="error" hidden></div>
+      <p class="hint">Demo users: client1/pass (client), emp1/pass (employee), emp2/pass (employee)</p>
+    </form>
+  </main>
+
+  <script src="/static/script.js"></script>
+</body>
+</html>
+

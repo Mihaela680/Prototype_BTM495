@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Calendar - Appointment Prototype</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-left">My Cleaning Business</div>
+    <div class="header-right">
+      <button id="back-home">Home</button>
+    </div>
+  </header>
+
+  <main class="calendar-main">
+    <h2>Book a service</h2>
+    <div class="controls">
+      <label>Service
+        <select id="service-select">
+          <option value="windows">Cleaning Windows</option>
+          <option value="gutters">Cleaning Gutters</option>
+        </select>
+      </label>
+      <label>Employee
+        <select id="employee-select"></select>
+      </label>
+      <label>Date <input id="book-date" type="date"></label>
+    </div>
+
+    <div id="availability" class="time-slots"></div>
+
+    <div id="book-msg" class="message" hidden></div>
+  </main>
+
+  <script src="/static/script.js"></script>
+</body>
+</html>
+
