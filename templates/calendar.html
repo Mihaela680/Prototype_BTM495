@@ -8,33 +8,49 @@
 </head>
 <body>
   <header class="site-header">
-    <div class="header-left">My Cleaning Business</div>
+    <div class="header-left">West Island Windows</div>
     <div class="header-right">
       <button id="back-home">Home</button>
+      <span id="user-greeting" class="user-greeting" hidden></span>
+      <button id="logout-btn" hidden>Log out</button>
     </div>
   </header>
 
-  <main class="calendar-main">
-    <h2>Book a service</h2>
-    <div class="controls">
-      <label>Service
-        <select id="service-select">
-          <option value="windows">Cleaning Windows</option>
-          <option value="gutters">Cleaning Gutters</option>
-        </select>
-      </label>
-      <label>Employee
-        <select id="employee-select"></select>
-      </label>
-      <label>Date <input id="book-date" type="date"></label>
-    </div>
+  <main>
+    <section class="calendar-main app-view">
+      <h2>Calendar</h2>
 
-    <div id="availability" class="time-slots"></div>
+      <!-- Client view: select employee, date, and time slots -->
+      <div class="client-view">
+        <div class="controls">
+          <div style="flex:1">
+            <label for="employee-select">Choose an employee</label>
+            <select id="employee-select"></select>
+          </div>
+          <div style="width:220px">
+            <label for="book-date">Choose a date</label>
+            <input id="book-date" type="date">
+          </div>
+        </div>
 
-    <div id="book-msg" class="message" hidden></div>
+        <div id="availability" class="time-slots" aria-live="polite"></div>
+        <div id="book-msg" class="hint" hidden></div>
+      </div>
+
+      <!-- Employee view: see a week overview of assigned bookings -->
+      <div class="employee-view" hidden>
+        <div class="controls">
+          <div style="width:220px">
+            <label for="week-start">Week starting (Monday)</label>
+            <input id="week-start" type="date">
+          </div>
+        </div>
+        <div id="weekly-bookings"></div>
+      </div>
+
+    </section>
   </main>
 
   <script src="/static/script.js"></script>
 </body>
 </html>
-

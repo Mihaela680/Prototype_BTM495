@@ -8,26 +8,81 @@
 </head>
 <body>
   <header class="site-header">
-    <div class="header-left">My Cleaning Business</div>
+    <div class="header-left">West Island Windows</div>
     <div class="header-right">
       <button id="back-home">Home</button>
     </div>
   </header>
 
-  <main class="login-main">
-    <form id="login-form" class="login-form" onsubmit="return false;">
-      <h2>Log in</h2>
-      <label>Username <input id="login-username" type="text" autocomplete="username"></label>
-      <label>Password <input id="login-password" type="password" autocomplete="current-password"></label>
-      <div class="login-actions">
-        <button id="login-submit">Sign in</button>
+  <main>
+    <section class="login-main app-view">
+      <!-- User Type Selection View -->
+      <div id="user-type-view" class="user-type-container">
+        <h2>Are you an employee or a customer?</h2>
+        <div class="user-type-buttons">
+          <button id="customer-btn" class="user-type-btn customer-btn" type="button">
+            <div class="icon">👤</div>
+            <div class="label">Customer</div>
+          </button>
+          <button id="employee-btn" class="user-type-btn employee-btn" type="button">
+            <div class="icon">👨‍💼</div>
+            <div class="label">Employee</div>
+          </button>
+        </div>
       </div>
-      <div id="login-error" class="error" hidden></div>
-      <p class="hint">Demo users: client1/pass (client), emp1/pass (employee), emp2/pass (employee)</p>
-    </form>
+
+      <!-- Login Form View -->
+      <div id="login-form-view" class="login-form" hidden>
+        <button id="back-to-type" class="back-link" type="button">← Change user type</button>
+
+        <label for="login-username">Username</label>
+        <input id="login-username" type="text" placeholder="username" autocomplete="username">
+
+        <label for="login-password">Password</label>
+        <input id="login-password" type="password" placeholder="password" autocomplete="current-password">
+
+        <div class="login-actions">
+          <button id="back-home-2" type="button">Cancel</button>
+          <button id="login-submit" type="button">Log in</button>
+        </div>
+        <div id="login-error" class="error" hidden></div>
+        <div class="hint" id="demo-hint">Demo users: <strong>client1 / pass</strong> or <strong>emp1 / pass</strong></div>
+
+        <div id="signup-prompt" class="signup-prompt" hidden>
+          Don't have an account? <button id="signup-link" class="link-btn" type="button">Create one here</button>
+        </div>
+      </div>
+
+      <!-- Signup Form View (for customers only) -->
+      <div id="signup-form-view" class="signup-form" hidden>
+        <button id="back-to-login" class="back-link" type="button">← Back to login</button>
+
+        <h3>Create an Account</h3>
+
+        <label for="signup-username">Username</label>
+        <input id="signup-username" type="text" placeholder="Choose a username" autocomplete="username">
+
+        <label for="signup-email">Email</label>
+        <input id="signup-email" type="email" placeholder="your@email.com" autocomplete="email">
+
+        <label for="signup-password">Password</label>
+        <input id="signup-password" type="password" placeholder="Enter a password" autocomplete="new-password">
+
+        <label for="signup-password-confirm">Confirm Password</label>
+        <input id="signup-password-confirm" type="password" placeholder="Confirm password" autocomplete="new-password">
+
+        <div class="login-actions">
+          <button id="signup-cancel" type="button">Cancel</button>
+          <button id="signup-submit" type="button">Create Account</button>
+        </div>
+        <div id="signup-error" class="error" hidden></div>
+      </div>
+    </section>
   </main>
 
   <script src="/static/script.js"></script>
 </body>
 </html>
 
+cd /Users/mihaelauntila/PycharmProjects/Prototype_BTM495
+python3 app.py

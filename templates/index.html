@@ -8,7 +8,7 @@
 </head>
 <body>
   <header class="site-header">
-    <div class="header-left">My Cleaning Business</div>
+    <div class="header-left">West Island Windows</div>
     <div class="header-right">
       <span id="user-greeting" class="user-greeting" hidden></span>
       <button id="login-btn">Log in</button>
@@ -18,28 +18,29 @@
 
   <main>
     <section class="contact">
-      <h1>My Cleaning Business</h1>
-      <p>Phone: (555) 123-4567 · Email: info@cleaningexample.com</p>
-      <p>Address: 123 Main St, Anytown</p>
+      <h1>West Island Windows</h1>
+      <p>Phone: (438) 255-1095 · Email: westislandwindowcleaning@gmail.com</p>
+      <p>Address: Montreal, Quebec</p>
     </section>
 
     <section class="services">
-      <div class="service-box" id="service-windows">
+      <div class="service-box">
         <h3>Cleaning Windows</h3>
         <p>Professional window cleaning for homes and businesses.</p>
+        <button class="service-box-btn" onclick="window.location.href='/login'">Book Now</button>
       </div>
-      <div class="service-box" id="service-gutters">
+      <div class="service-box">
         <h3>Cleaning Gutters</h3>
         <p>Safe and thorough gutter cleaning and maintenance.</p>
+        <button class="service-box-btn" onclick="window.location.href='/login'">Book Now</button>
       </div>
     </section>
 
     <section class="placeholders">
-      <!-- Keep the boxes where you can add pictures later; remove the UML diagram lines -->
+      <!-- Service images -->
       <div class="placeholder-row">
-        <div class="placeholder-box">Picture 1</div>
-        <div class="placeholder-box">Picture 2</div>
-        <div class="placeholder-box">Picture 3</div>
+        <div class="placeholder-box service-image" id="service-img-1">Windows</div>
+        <div class="placeholder-box service-image" id="service-img-2">Gutters</div>
       </div>
     </section>
   </main>
