@@ -8,7 +8,19 @@ DATA_FILE = 'bookings.json'
 
 # Demo users and employees
 DEMO_USERS = {
-    'client1': {'password': 'pass', 'role': 'client', 'name': 'Client One', 'id': 'client1'},
+    'client1': {
+        'password': 'pass',
+        'role': 'client',
+        'name': 'John Doe',
+        'id': 'client1',
+        'email': 'john.doe@example.com',
+        'phone': '(438) 123-4567',
+        'street': '123 Main Street',
+        'city': 'Montreal',
+        'province': 'Quebec',
+        'country': 'Canada',
+        'postal': 'H1A 1A1'
+    },
     'emp1': {'password': 'pass', 'role': 'employee', 'name': 'Employee One', 'id': 'emp1'},
     'emp2': {'password': 'pass', 'role': 'employee', 'name': 'Employee Two', 'id': 'emp2'},
 }
@@ -89,9 +101,24 @@ def api_availability():
     except Exception:
         return jsonify({'error':'invalid date format, use YYYY-MM-DD'}), 400
     day_slots = generate_day_slots()
-    # find booked times for that employee/date
-    taken = {b['time'] for b in bookings if b['employee_id']==employee_id and b['date']==date}
-    slots = [{'time':t, 'available': (t not in taken)} for t in day_slots]
+
+    # Find booked times for that employee/date (considering duration)
+    taken_slots = set()
+    for b in bookings:
+        if b['employee_id'] == employee_id and b['date'] == date:
+            # Mark this slot and any overlapping slots as taken
+            booking_start = datetime.strptime(b['time'], '%H:%M')
+            booking_duration = b.get('duration', 60)
+            booking_end = booking_start + timedelta(minutes=int(booking_duration))
+
+            # Mark all 30-min slots that overlap with this booking as taken
+            for slot_time in day_slots:
+                slot_start = datetime.strptime(slot_time, '%H:%M')
+                slot_end = slot_start + timedelta(minutes=30)
+                if slot_start < booking_end and slot_end > booking_start:
+                    taken_slots.add(slot_time)
+
+    slots = [{'time': t, 'available': (t not in taken_slots)} for t in day_slots]
     return jsonify({'employee_id': employee_id, 'date': date, 'slots': slots})
 
 @app.route('/api/book', methods=['POST'])
@@ -102,17 +129,35 @@ def api_book():
     time = data.get('time')
     client_id = data.get('client_id')
     client_name = data.get('client_name')
+    duration = data.get('duration', 60)  # default 60 minutes
+
     if not all([employee_id, date, time, client_name]):
         return jsonify({'success': False, 'error': 'missing fields'}), 400
     # validate date/time format
     try:
         datetime.strptime(date, '%Y-%m-%d')
+        datetime.strptime(time, '%H:%M')
     except Exception:
-        return jsonify({'success': False, 'error': 'invalid date format'}), 400
-    # check if slot taken for employee
+        return jsonify({'success': False, 'error': 'invalid date/time format'}), 400
+
+    # Convert time and duration to check for conflicts
+    try:
+        start_time = datetime.strptime(time, '%H:%M')
+        end_time = start_time + timedelta(minutes=int(duration))
+    except Exception:
+        return jsonify({'success': False, 'error': 'invalid duration'}), 400
+
+    # check if slot taken for employee (considering duration)
     for b in bookings:
-        if b['employee_id']==employee_id and b['date']==date and b['time']==time:
-            return jsonify({'success': False, 'error': 'slot already taken'}), 409
+        if b['employee_id'] == employee_id and b['date'] == date:
+            booking_start = datetime.strptime(b['time'], '%H:%M')
+            booking_duration = b.get('duration', 60)
+            booking_end = booking_start + timedelta(minutes=int(booking_duration))
+
+            # Check for time overlap
+            if start_time < booking_end and end_time > booking_start:
+                return jsonify({'success': False, 'error': 'time slot conflict'}), 409
+
     # create booking id
     booking_id = 'b' + str(len(bookings)+1)
     booking = {
@@ -121,7 +166,8 @@ def api_book():
         'client_id': client_id or '',
         'client_name': client_name,
         'date': date,
-        'time': time
+        'time': time,
+        'duration': int(duration)
     }
     bookings.append(booking)
     save_bookings(bookings)
@@ -129,12 +175,15 @@ def api_book():
 
 @app.route('/api/bookings', methods=['GET'])
 def api_bookings():
-    # optional filters: employee_id, week_start (YYYY-MM-DD)
+    # optional filters: employee_id, week_start (YYYY-MM-DD), client_id
     employee_id = request.args.get('employee_id')
     week_start = request.args.get('week_start')
+    client_id = request.args.get('client_id')
     results = bookings
     if employee_id:
         results = [b for b in results if b['employee_id']==employee_id]
+    if client_id:
+        results = [b for b in results if b['client_id']==client_id]
     if week_start:
         try:
             ws = datetime.strptime(week_start, '%Y-%m-%d')
@@ -143,6 +192,88 @@ def api_bookings():
         week_end = ws + timedelta(days=7)
         results = [b for b in results if ws.date() <= datetime.strptime(b['date'],'%Y-%m-%d').date() < week_end.date()]
     return jsonify(results)
+
+@app.route('/api/client-profile', methods=['GET'])
+def api_client_profile():
+    # Get client profile and their bookings
+    client_id = request.args.get('client_id')
+    if not client_id:
+        return jsonify({'error': 'client_id required'}), 400
+
+    user = DEMO_USERS.get(client_id)
+    if not user or user.get('role') != 'client':
+        return jsonify({'error': 'client not found'}), 404
+
+    # Get client's bookings
+    client_bookings = [b for b in bookings if b['client_id'] == client_id or b.get('client_id') == client_id]
+
+    return jsonify({
+        'success': True,
+        'profile': {
+            'name': user.get('name'),
+            'email': user.get('email'),
+            'phone': user.get('phone'),
+            'street': user.get('street'),
+            'city': user.get('city'),
+            'province': user.get('province'),
+            'country': user.get('country'),
+            'postal': user.get('postal')
+        },
+        'bookings': client_bookings
+    })
+
+@app.route('/api/cancel-booking', methods=['POST'])
+def api_cancel_booking():
+    data = request.get_json() or {}
+    booking_id = data.get('booking_id')
+
+    global bookings
+    booking = next((b for b in bookings if b['id'] == booking_id), None)
+    if not booking:
+        return jsonify({'success': False, 'error': 'booking not found'}), 404
+
+    bookings = [b for b in bookings if b['id'] != booking_id]
+    save_bookings(bookings)
+    return jsonify({'success': True, 'message': 'booking cancelled'})
+
+@app.route('/api/update-booking', methods=['POST'])
+def api_update_booking():
+    data = request.get_json() or {}
+    booking_id = data.get('booking_id')
+    new_date = data.get('date')
+    new_time = data.get('time')
+
+    booking = next((b for b in bookings if b['id'] == booking_id), None)
+    if not booking:
+        return jsonify({'success': False, 'error': 'booking not found'}), 404
+
+    # Validate new date/time
+    try:
+        datetime.strptime(new_date, '%Y-%m-%d')
+        datetime.strptime(new_time, '%H:%M')
+    except Exception:
+        return jsonify({'success': False, 'error': 'invalid date/time format'}), 400
+
+    # Check for conflicts with new time
+    employee_id = booking['employee_id']
+    booking_duration = booking.get('duration', 60)
+    start_time = datetime.strptime(new_time, '%H:%M')
+    end_time = start_time + timedelta(minutes=int(booking_duration))
+
+    for b in bookings:
+        if b['id'] != booking_id and b['employee_id'] == employee_id and b['date'] == new_date:
+            booking_start = datetime.strptime(b['time'], '%H:%M')
+            existing_duration = b.get('duration', 60)
+            booking_end = booking_start + timedelta(minutes=int(existing_duration))
+
+            if start_time < booking_end and end_time > booking_start:
+                return jsonify({'success': False, 'error': 'time slot conflict'}), 409
+
+    # Update booking
+    booking['date'] = new_date
+    booking['time'] = new_time
+    save_bookings(bookings)
+    return jsonify({'success': True, 'message': 'booking updated'})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

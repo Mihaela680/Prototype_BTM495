@@ -1,0 +1,11 @@
+[
+  {
+    "id": "b1",
+    "employee_id": "emp1",
+    "client_id": "",
+    "client_name": "bob",
+    "date": "2026-02-26",
+    "time": "12:00",
+    "duration": 60
+  }
+]

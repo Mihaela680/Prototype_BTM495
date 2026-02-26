@@ -304,6 +304,8 @@ if(window.location.pathname === '/calendar'){
     days.forEach(d=>{
       const cell = document.createElement('div');
       cell.className = 'day-cell';
+      cell.dataset.date = d.key;
+      cell.style.cursor = 'pointer';
 
       const h = document.createElement('h4');
       h.textContent = d.label;
@@ -312,7 +314,7 @@ if(window.location.pathname === '/calendar'){
       if(d.items.length===0){
         const p = document.createElement('div');
         p.className='no-bookings';
-        p.textContent = 'No bookings';
+        p.textContent = 'No bookings - Click to add';
         cell.appendChild(p);
       }
       else{
@@ -330,8 +332,114 @@ if(window.location.pathname === '/calendar'){
           cell.appendChild(p);
         });
       }
+
+      // Make day cell clickable to add booking
+      cell.addEventListener('click', ()=>{
+        openEmployeeBookingWithTime(empSelect.value, d.key);
+      });
+
       weekly.appendChild(cell);
     });
+  }
+
+  function openEmployeeBookingWithTime(empId, date){
+    const timeStr = prompt('Enter time (HH:MM) - e.g., 14:00:');
+    if(!timeStr) return;
+    // simple validation
+    if(!/^\d{2}:\d{2}$/.test(timeStr)){
+      alert('Invalid time format. Use HH:MM');
+      return;
+    }
+
+    // Show modal only after valid time entry
+    const modal = el('employee-booking-modal');
+    if(!modal) return;
+
+    modal.dataset.empId = empId;
+    modal.dataset.date = date;
+
+    // Pre-fill date field
+    const dateField = el('emp-booking-date');
+    if(dateField) dateField.value = date;
+
+    // Pre-fill time field
+    const timeField = el('emp-booking-time');
+    if(timeField) timeField.value = timeStr;
+
+    // Clear other form fields
+    el('emp-client-full-name').value = '';
+    el('emp-client-email').value = '';
+    el('emp-client-phone').value = '';
+    el('emp-client-street').value = '';
+    el('emp-client-city').value = '';
+    el('emp-client-province').value = '';
+    el('emp-client-country').value = '';
+    el('emp-client-postal').value = '';
+    el('emp-client-duration').value = '60';
+    el('emp-client-notes').value = '';
+
+    modal.hidden = false;
+  }
+
+  // Handle employee booking form submission
+  const empBookingForm = el('employee-booking-form');
+  if(empBookingForm){
+    empBookingForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+
+      const modal = el('employee-booking-modal');
+      const name = el('emp-client-full-name').value.trim();
+      const email = el('emp-client-email').value.trim();
+      const phone = el('emp-client-phone').value.trim();
+      const street = el('emp-client-street').value.trim();
+      const city = el('emp-client-city').value.trim();
+      const province = el('emp-client-province').value.trim();
+      const country = el('emp-client-country').value.trim();
+      const postal = el('emp-client-postal').value.trim();
+      const time = el('emp-booking-time').value.trim();
+      const duration = parseInt(el('emp-client-duration').value) || 60;
+      const notes = el('emp-client-notes').value.trim();
+
+      // Validate time format
+      if(!/^\d{2}:\d{2}$/.test(time)){
+        alert('Invalid time format. Please use HH:MM (e.g., 14:00)');
+        return;
+      }
+
+      if(!name || !email || !phone || !street || !city || !province || !country || !postal){
+        alert('Please fill in all required fields');
+        return;
+      }
+
+      const empId = modal.dataset.empId;
+      const date = modal.dataset.date;
+
+      await bookSlotAsEmployee(empId, date, time, name, duration);
+      modal.hidden = true;
+    });
+  }
+
+  // Handle employee booking cancel button
+  const empCancelBtn = el('emp-booking-cancel-btn');
+  if(empCancelBtn){
+    empCancelBtn.addEventListener('click', ()=>{
+      el('employee-booking-modal').hidden = true;
+    });
+  }
+
+  async function bookSlotAsEmployee(empId, date, time, clientName, duration){
+    try{
+      const res = await fetch('/api/book', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ employee_id: empId, date: date, time: time, client_name: clientName, duration: duration }) });
+      const j = await res.json();
+      if(!j.success){ showMsg(j.error || 'Booking failed'); return; }
+
+      alert('Booking created successfully!');
+
+      // Reload weekly bookings
+      if(!employeeView.hidden && weekStartInput.value){
+        loadWeeklyBookings(empSelect.value, weekStartInput.value);
+      }
+    }catch(e){ showMsg('Network error'); }
   }
 
   // wire events
@@ -360,11 +468,125 @@ if(window.location.pathname === '/calendar'){
         await loadWeeklyBookings(selectedEmp, mondayStr);
         return;
       }
+
+      // Client view - load profile and bookings
+      if(user.role === 'client'){
+        clientView.hidden = false;
+        employeeView.hidden = true;
+
+        // Load client profile and bookings
+        try{
+          const res = await fetch(`/api/client-profile?client_id=${encodeURIComponent(user.id)}`);
+          if(res.ok){
+            const data = await res.json();
+            if(data.success){
+              // Show booking view if has profile, else new user view
+              const bookingView = el('client-booking-view');
+              const newUserView = el('client-new-user-view');
+
+              if(data.profile.email){
+                // Existing user with profile
+                bookingView.style.display = '';
+                newUserView.style.display = 'none';
+
+                // Display profile
+                const profileInfo = el('client-profile-info');
+                profileInfo.innerHTML = `
+                  <div class="profile-field">
+                    <div class="profile-label">Full Name</div>
+                    <div class="profile-value">${data.profile.name}</div>
+                  </div>
+                  <div class="profile-field">
+                    <div class="profile-label">Email</div>
+                    <div class="profile-value">${data.profile.email}</div>
+                  </div>
+                  <div class="profile-field">
+                    <div class="profile-label">Phone</div>
+                    <div class="profile-value">${data.profile.phone}</div>
+                  </div>
+                  <div class="profile-field">
+                    <div class="profile-label">Address</div>
+                    <div class="profile-value">${data.profile.street}<br>${data.profile.city}, ${data.profile.province} ${data.profile.postal}<br>${data.profile.country}</div>
+                  </div>
+                `;
+
+                // Display bookings
+                const bookingsList = el('client-bookings-list');
+                if(data.bookings && data.bookings.length > 0){
+                  bookingsList.innerHTML = data.bookings.map(b => `
+                    <div class="client-booking-card">
+                      <div class="booking-info">
+                        <div class="booking-time">${b.time}</div>
+                        <div class="booking-date">${b.date}</div>
+                        <div class="booking-employee">Employee: ${b.employee_id}</div>
+                      </div>
+                      <div class="booking-actions">
+                        <button class="modify-btn" onclick="modifyBooking('${b.id}')">Modify</button>
+                        <button class="cancel-btn" onclick="cancelBooking('${b.id}')">Cancel</button>
+                      </div>
+                    </div>
+                  `).join('');
+                } else {
+                  bookingsList.innerHTML = '<div class="no-bookings-msg">No bookings yet</div>';
+                }
+              } else {
+                // New user without profile
+                bookingView.style.display = 'none';
+                newUserView.style.display = '';
+              }
+            }
+          }
+
+          await loadEmployees();
+          if(!dateInput.value){ dateInput.value = new Date().toISOString().slice(0,10); }
+          await loadAvailability();
+        }catch(e){
+          console.error('Failed to load client profile:', e);
+          // Show new user view on error
+          el('client-booking-view').style.display = 'none';
+          el('client-new-user-view').style.display = '';
+          await loadEmployees();
+          if(!dateInput.value){ dateInput.value = new Date().toISOString().slice(0,10); }
+          await loadAvailability();
+        }
+        return;
+      }
     }
-    // default client view
-    clientView.hidden = false; employeeView.hidden = true;
+
+    // default client view (not logged in)
+    clientView.hidden = false;
+    employeeView.hidden = true;
+    el('client-booking-view').style.display = 'none';
+    el('client-new-user-view').style.display = '';
     await loadEmployees();
     if(!dateInput.value){ dateInput.value = new Date().toISOString().slice(0,10); }
     await loadAvailability();
   })();
+
+  // Modify booking function
+  window.modifyBooking = function(bookingId){
+    alert('Modify booking feature coming soon: ' + bookingId);
+  };
+
+  // Cancel booking function
+  window.cancelBooking = async function(bookingId){
+    if(!confirm('Are you sure you want to cancel this booking?')) return;
+
+    try{
+      const res = await fetch('/api/cancel-booking', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({booking_id: bookingId})
+      });
+      const data = await res.json();
+      if(data.success){
+        alert('Booking cancelled successfully');
+        location.reload();
+      } else {
+        alert('Error: ' + (data.error || 'Failed to cancel booking'));
+      }
+    }catch(e){
+      alert('Network error: ' + e.message);
+    }
+  };
 }

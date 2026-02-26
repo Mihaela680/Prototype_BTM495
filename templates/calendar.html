@@ -22,19 +22,53 @@
 
       <!-- Client view: select employee, date, and time slots -->
       <div class="client-view">
-        <div class="controls">
-          <div style="flex:1">
-            <label for="employee-select">Choose an employee</label>
-            <select id="employee-select"></select>
-          </div>
-          <div style="width:220px">
-            <label for="book-date">Choose a date</label>
-            <input id="book-date" type="date">
+        <div style="display:none" id="client-booking-view">
+          <!-- Split layout: schedule on left, profile on right -->
+          <div style="display:flex;gap:24px;margin-bottom:20px">
+            <!-- Left side: Schedule -->
+            <div style="flex:1">
+              <h3 style="color:var(--primary-blue);margin-top:0">Book an Appointment</h3>
+              <div class="controls">
+                <div style="flex:1">
+                  <label for="employee-select">Choose an employee</label>
+                  <select id="employee-select"></select>
+                </div>
+                <div style="width:220px">
+                  <label for="book-date">Choose a date</label>
+                  <input id="book-date" type="date">
+                </div>
+              </div>
+              <div id="availability" class="time-slots" aria-live="polite"></div>
+              <div id="book-msg" class="hint" hidden></div>
+            </div>
+
+            <!-- Right side: Profile Info -->
+            <div style="flex:1;background:#FFFFFF;padding:20px;border-radius:10px;border:1px solid var(--border-light);box-shadow:0 2px 8px rgba(0,82,163,0.08);height:fit-content">
+              <h3 style="color:var(--primary-blue);margin-top:0">Your Profile</h3>
+              <div id="client-profile-info"></div>
+
+              <h4 style="color:var(--primary-blue);margin-top:24px">Your Bookings</h4>
+              <div id="client-bookings-list"></div>
+            </div>
           </div>
         </div>
 
-        <div id="availability" class="time-slots" aria-live="polite"></div>
-        <div id="book-msg" class="hint" hidden></div>
+        <div style="display:none" id="client-new-user-view">
+          <!-- New client: full width booking -->
+          <div class="controls">
+            <div style="flex:1">
+              <label for="employee-select">Choose an employee</label>
+              <select id="employee-select"></select>
+            </div>
+            <div style="width:220px">
+              <label for="book-date">Choose a date</label>
+              <input id="book-date" type="date">
+            </div>
+          </div>
+
+          <div id="availability" class="time-slots" aria-live="polite"></div>
+          <div id="book-msg" class="hint" hidden></div>
+        </div>
       </div>
 
       <!-- Client booking form modal -->
@@ -106,6 +140,83 @@
           </div>
         </div>
         <div id="weekly-bookings"></div>
+        <p class="hint" style="margin-top:20px;">💡 Click on a day cell to create a new booking</p>
+      </div>
+
+      <!-- Employee booking form modal -->
+      <div id="employee-booking-modal" class="modal" hidden>
+        <div class="modal-content">
+          <h3>Create Client Booking</h3>
+          <form id="employee-booking-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="emp-booking-date">Date *</label>
+                <input id="emp-booking-date" type="text" disabled placeholder="Date will be auto-filled">
+              </div>
+              <div class="form-group">
+                <label for="emp-booking-time">Time (HH:MM) *</label>
+                <input id="emp-booking-time" type="text" required placeholder="14:00">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="emp-client-full-name">Full Name *</label>
+              <input id="emp-client-full-name" type="text" required placeholder="John Doe">
+            </div>
+
+            <div class="form-group">
+              <label for="emp-client-email">Email Address *</label>
+              <input id="emp-client-email" type="email" required placeholder="john@example.com">
+            </div>
+
+            <div class="form-group">
+              <label for="emp-client-phone">Phone Number *</label>
+              <input id="emp-client-phone" type="tel" required placeholder="(123) 456-7890">
+            </div>
+
+            <div class="form-group">
+              <label for="emp-client-street">Street Address *</label>
+              <input id="emp-client-street" type="text" required placeholder="123 Main St">
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="emp-client-city">City *</label>
+                <input id="emp-client-city" type="text" required placeholder="Montreal">
+              </div>
+              <div class="form-group">
+                <label for="emp-client-province">Province *</label>
+                <input id="emp-client-province" type="text" required placeholder="Quebec">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="emp-client-country">Country *</label>
+                <input id="emp-client-country" type="text" required placeholder="Canada">
+              </div>
+              <div class="form-group">
+                <label for="emp-client-postal">Postal Code *</label>
+                <input id="emp-client-postal" type="text" required placeholder="H1A 1A1">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="emp-client-duration">Duration (minutes) *</label>
+              <input id="emp-client-duration" type="number" required placeholder="60" min="30" step="30" value="60">
+            </div>
+
+            <div class="form-group">
+              <label for="emp-client-notes">Extra Notes</label>
+              <textarea id="emp-client-notes" placeholder="Any special requests or notes..." rows="4"></textarea>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" id="emp-booking-cancel-btn" class="btn-secondary">Cancel</button>
+              <button type="submit" id="emp-booking-submit-btn" class="btn-primary">Create Booking</button>
+            </div>
+          </form>
+        </div>
       </div>
 
     </section>
