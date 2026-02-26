@@ -202,9 +202,62 @@ if(window.location.pathname === '/calendar'){
   }
 
   function openBooking(emp, date, time){
-    const name = prompt(`Enter your name to book ${date} ${time}:`);
-    if(!name) return; // cancelled
-    bookSlot(emp,date,time,name);
+    // Show the booking form modal instead of prompt
+    const modal = el('booking-form-modal');
+    if(!modal) return;
+
+    // Store the booking details for submission
+    modal.dataset.emp = emp;
+    modal.dataset.date = date;
+    modal.dataset.time = time;
+
+    // Clear form
+    const form = el('booking-form');
+    if(form) form.reset();
+
+    // Show modal
+    modal.hidden = false;
+  }
+
+  // Handle booking form submission
+  const bookingForm = el('booking-form');
+  if(bookingForm){
+    bookingForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+
+      const modal = el('booking-form-modal');
+      const name = el('client-full-name').value.trim();
+      const email = el('client-email').value.trim();
+      const phone = el('client-phone').value.trim();
+      const street = el('client-street').value.trim();
+      const city = el('client-city').value.trim();
+      const province = el('client-province').value.trim();
+      const country = el('client-country').value.trim();
+      const postal = el('client-postal').value.trim();
+      const notes = el('client-notes').value.trim();
+
+      if(!name || !email || !phone || !street || !city || !province || !country || !postal){
+        alert('Please fill in all required fields');
+        return;
+      }
+
+      const emp = modal.dataset.emp;
+      const date = modal.dataset.date;
+      const time = modal.dataset.time;
+
+      await bookSlot(emp, date, time, name);
+      modal.hidden = true;
+    });
+  }
+
+  // Handle booking cancel button
+  const cancelBtn = el('booking-cancel-btn');
+  if(cancelBtn){
+    cancelBtn.addEventListener('click', ()=>{
+      el('booking-form-modal').hidden = true;
+      // Reload availability to show time slots again
+      loadAvailability();
+    });
   }
 
   async function bookSlot(emp,date,time,name){
@@ -212,7 +265,11 @@ if(window.location.pathname === '/calendar'){
       const res = await fetch('/api/book', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ employee_id: emp, date: date, time: time, client_name: name }) });
       const j = await res.json();
       if(!j.success){ showMsg(j.error || 'Booking failed'); return; }
-      showMsg('Booking confirmed');
+
+      // Show confirmation popup
+      alert('Confirmation sent to your e-mail!');
+
+      // Reload availability to show updated time slots
       loadAvailability();
     }catch(e){ showMsg('Network error'); }
   }

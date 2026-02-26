@@ -23,7 +23,10 @@ main{padding:20px}
 .contact p{color:var(--neutral-gray);font-size:15px;margin:6px 0}
 
 .services{display:flex;gap:24px;justify-content:center;margin-bottom:32px;flex-wrap:wrap}
+.service-card{display:flex;flex-direction:column;align-items:center;gap:12px}
 .service-box{width:280px;border:1px solid var(--border-light);border-radius:10px;padding:20px;text-align:center;background:linear-gradient(180deg,var(--light-blue) 0%,#FFFFFF 100%);box-shadow:0 4px 12px rgba(0,82,163,0.08);transition:all 0.3s ease;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;min-height:200px}
+.service-image-small{width:280px;height:220px;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,82,163,0.1)}
+.service-photo{width:100%;height:100%;object-fit:cover;display:block}
 .service-box:hover{box-shadow:0 8px 20px rgba(0,82,163,0.15);transform:translateY(-4px);background:linear-gradient(180deg,var(--tertiary-blue) 0%,#FFFFFF 100%)}
 .service-box h3{color:var(--primary-blue);font-size:18px;margin:0 0 10px 0}
 .service-box p{color:var(--neutral-gray);font-size:14px;line-height:1.6;margin:0 0 16px 0}
@@ -77,6 +80,23 @@ main{padding:20px}
 
 /* Signup Form Styling */
 .signup-form h3{color:var(--primary-blue);margin-top:0;margin-bottom:20px}
+
+/* Booking Form Modal */
+.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000}
+.modal-content{background:#FFFFFF;border-radius:12px;padding:32px;max-width:500px;width:90%;box-shadow:0 8px 24px rgba(0,82,163,0.2);max-height:90vh;overflow-y:auto}
+.modal-content h3{color:var(--primary-blue);margin-top:0;margin-bottom:24px;font-size:20px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-weight:500;color:var(--neutral-dark);margin-bottom:6px;font-size:14px}
+.form-group input, .form-group textarea{width:100%;padding:10px 12px;border:1px solid var(--border-light);border-radius:6px;font-size:14px;font-family:inherit;transition:border-color 0.3s ease,box-shadow 0.3s ease;box-sizing:border-box}
+.form-group input:focus, .form-group textarea:focus{outline:none;border-color:var(--primary-blue);box-shadow:0 0 0 3px var(--tertiary-blue)}
+.form-group textarea{resize:vertical;min-height:80px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.form-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:24px;padding-top:20px;border-top:1px solid var(--border-light)}
+.btn-primary{padding:10px 24px;border-radius:6px;border:none;background:var(--primary-blue);color:#FFFFFF;cursor:pointer;font-weight:600;transition:all 0.3s ease;font-size:14px}
+.btn-primary:hover{background:var(--primary-blue-dark);transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,82,163,0.2)}
+.btn-secondary{padding:10px 24px;border-radius:6px;border:1px solid var(--border-light);background:#FFFFFF;color:var(--neutral-dark);cursor:pointer;font-weight:600;transition:all 0.3s ease;font-size:14px}
+.btn-secondary:hover{background:var(--neutral-light);border-color:var(--primary-blue)}
+.confirmation-message{margin-top:16px;padding:16px;border-radius:8px;background:#E8F5E9;border-left:4px solid #4CAF50;color:#1B5E20;font-weight:500;text-align:center;font-size:16px}
 
 /* Employee Weekly Grid View */
 #weekly-bookings{display:grid;grid-template-columns:repeat(7,1fr);gap:12px;margin-top:16px}

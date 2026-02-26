@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Calendar - Appointment Prototype</title>
-  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/styles.css?v=2">
 </head>
 <body>
   <header class="site-header">
@@ -35,6 +35,66 @@
 
         <div id="availability" class="time-slots" aria-live="polite"></div>
         <div id="book-msg" class="hint" hidden></div>
+      </div>
+
+      <!-- Client booking form modal -->
+      <div id="booking-form-modal" class="modal" hidden>
+        <div class="modal-content">
+          <h3>Complete Your Booking</h3>
+          <form id="booking-form">
+            <div class="form-group">
+              <label for="client-full-name">Full Name *</label>
+              <input id="client-full-name" type="text" required placeholder="John Doe">
+            </div>
+
+            <div class="form-group">
+              <label for="client-email">Email Address *</label>
+              <input id="client-email" type="email" required placeholder="john@example.com">
+            </div>
+
+            <div class="form-group">
+              <label for="client-phone">Phone Number *</label>
+              <input id="client-phone" type="tel" required placeholder="(123) 456-7890">
+            </div>
+
+            <div class="form-group">
+              <label for="client-street">Street Address *</label>
+              <input id="client-street" type="text" required placeholder="123 Main St">
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="client-city">City *</label>
+                <input id="client-city" type="text" required placeholder="Montreal">
+              </div>
+              <div class="form-group">
+                <label for="client-province">Province *</label>
+                <input id="client-province" type="text" required placeholder="Quebec">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="client-country">Country *</label>
+                <input id="client-country" type="text" required placeholder="Canada">
+              </div>
+              <div class="form-group">
+                <label for="client-postal">Postal Code *</label>
+                <input id="client-postal" type="text" required placeholder="H1A 1A1">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="client-notes">Extra Notes</label>
+              <textarea id="client-notes" placeholder="Any special requests or notes..." rows="4"></textarea>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" id="booking-cancel-btn" class="btn-secondary">Cancel</button>
+              <button type="submit" id="booking-submit-btn" class="btn-primary">Submit</button>
+            </div>
+          </form>
+        </div>
       </div>
 
       <!-- Employee view: see a week overview of assigned bookings -->

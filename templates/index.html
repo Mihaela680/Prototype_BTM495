@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Home - Appointment Prototype</title>
-  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/styles.css?v=2">
 </head>
 <body>
   <header class="site-header">
@@ -24,26 +24,25 @@
     </section>
 
     <section class="services">
-      <div class="service-box">
-        <h3>Cleaning Windows</h3>
-        <p>Professional window cleaning for homes and businesses.</p>
-        <button class="service-box-btn" onclick="window.location.href='/login'">Book Now</button>
+      <div class="service-card">
+        <div class="service-box">
+          <h3>Cleaning Windows</h3>
+          <p>Professional window cleaning for homes and businesses.</p>
+          <button class="service-box-btn" onclick="window.location.href='/login'">Book Now</button>
+        </div>
+        <div class="service-image-small" id="service-img-1">
+          <img src="/static/window.png?v=3" alt="Window cleaning" class="service-photo"/>
+        </div>
       </div>
-      <div class="service-box">
-        <h3>Cleaning Gutters</h3>
-        <p>Safe and thorough gutter cleaning and maintenance.</p>
-        <button class="service-box-btn" onclick="window.location.href='/login'">Book Now</button>
-      </div>
-    </section>
 
-    <section class="placeholders">
-      <!-- Service images -->
-      <div class="placeholder-row">
-        <div class="placeholder-box service-image" id="service-img-1">Windows</div>
-        <div class="placeholder-box service-image" id="service-img-2">
-          Gutters
-          <!-- Use the static URL so the image will be served correctly when running the app. -->
-          <img src="/static/Gutter.png" alt="Gutter cleaning" class="service-photo" height="300" width="300"/>
+      <div class="service-card">
+        <div class="service-box">
+          <h3>Cleaning Gutters</h3>
+          <p>Safe and thorough gutter cleaning and maintenance.</p>
+          <button class="service-box-btn" onclick="window.location.href='/login'">Book Now</button>
+        </div>
+        <div class="service-image-small" id="service-img-2">
+          <img src="/static/Gutter.png?v=3" alt="Gutter cleaning" class="service-photo"/>
         </div>
       </div>
     </section>
