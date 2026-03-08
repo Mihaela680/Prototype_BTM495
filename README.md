@@ -206,7 +206,7 @@ Prototype_BTM495/
 | emp1 | pass | Employee |
 | emp2 | pass | Employee |
 
-## 📊 Data Storage
+## 📊 Data Base (Static)
 
 Bookings are stored in `bookings.json` file with structure:
 ```json
