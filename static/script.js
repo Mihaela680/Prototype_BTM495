@@ -20,6 +20,15 @@ if(el('login-btn') && window.location.pathname === '/'){
 if(window.location.pathname === '/login'){
   let selectedUserType = null;
 
+  // Check URL params for pre-selected role
+  const urlParams = new URLSearchParams(window.location.search);
+  const role = urlParams.get('role');
+  if (role === 'customer') {
+    selectedUserType = 'customer';
+  } else if (role === 'employee') {
+    selectedUserType = 'employee';
+  }
+
   // back button(s)
   const back = el('back-home'); if(back) back.addEventListener('click', ()=>{ window.location.href = '/'; });
   const back2 = el('back-home-2'); if(back2) back2.addEventListener('click', ()=>{ window.location.href = '/'; });
@@ -32,6 +41,19 @@ if(window.location.pathname === '/login'){
   const backToTypeBtn = el('back-to-type');
   const signupPrompt = el('signup-prompt');
   const signupLink = el('signup-link');
+
+  // If role is pre-selected, show login form directly
+  if (selectedUserType) {
+    userTypeView.hidden = true;
+    loginFormView.hidden = false;
+    if (selectedUserType === 'customer') {
+      signupPrompt.hidden = false;
+      el('demo-hint').hidden = false;
+    } else {
+      signupPrompt.hidden = true;
+      el('demo-hint').hidden = false;
+    }
+  }
 
   if(customerBtn){
     customerBtn.addEventListener('click', ()=>{
@@ -52,6 +74,7 @@ if(window.location.pathname === '/login'){
       el('demo-hint').hidden = false;
     });
   }
+
 
   if(backToTypeBtn){
     backToTypeBtn.addEventListener('click', ()=>{
@@ -163,6 +186,7 @@ if(window.location.pathname === '/calendar'){
   const weekStartInput = el('week-start');
   const clientView = document.querySelector('.client-view');
   const employeeView = document.querySelector('.employee-view');
+  const managerView = document.querySelector('.manager-view');
 
   function showMsg(m){ msg.textContent = m; msg.hidden = false; setTimeout(()=>{ msg.hidden = true; }, 3500); }
 
@@ -442,6 +466,205 @@ if(window.location.pathname === '/calendar'){
     }catch(e){ showMsg('Network error'); }
   }
 
+  // Load employee profile
+  async function loadEmployeeProfile(employeeId){
+    try{
+      const res = await fetch(`/api/employee-profile?employee_id=${encodeURIComponent(employeeId)}`);
+      if(res.ok){
+        const data = await res.json();
+        if(data.success){
+          const profileInfo = el('employee-profile-info');
+          profileInfo.innerHTML = `
+            <div class="profile-field">
+              <div class="profile-label">Employee ID</div>
+              <div class="profile-value">${data.profile.id}</div>
+            </div>
+            <div class="profile-field">
+              <div class="profile-label">Name</div>
+              <div class="profile-value">${data.profile.name}</div>
+            </div>
+            <div class="profile-field">
+              <div class="profile-label">Role</div>
+              <div class="profile-value">${data.profile.role}</div>
+            </div>
+            <div class="profile-field">
+              <div class="profile-label">Birthdate</div>
+              <div class="profile-value">${data.profile.birthdate}</div>
+            </div>
+            <div class="profile-field">
+              <div class="profile-label">Social Insurance Number</div>
+              <div class="profile-value">${data.profile.sin}</div>
+            </div>
+          `;
+        }
+      }
+    }catch(e){
+      console.error('Failed to load employee profile:', e);
+    }
+
+    // Load workload
+    try{
+      const res = await fetch(`/api/get-workload?employee_id=${encodeURIComponent(employeeId)}`);
+      if(res.ok){
+        const data = await res.json();
+        el('workload-hours').value = data.hours;
+      }
+    }catch(e){
+      console.error('Failed to load workload:', e);
+    }
+  }
+
+  // Availability management
+  let currentAvailTimes = [];
+  const loadAvailBtn = el('load-avail-btn');
+  if(loadAvailBtn){
+    loadAvailBtn.addEventListener('click', async ()=>{
+      const date = el('avail-date').value;
+      const user = currentUser();
+      if(!date || !user) return;
+      try{
+        const res = await fetch(`/api/get-availability?employee_id=${encodeURIComponent(user.id)}&date=${encodeURIComponent(date)}`);
+        if(res.ok){
+          const data = await res.json();
+          currentAvailTimes = data.times;
+          renderAvailSlots(data.times);
+          el('confirm-avail-btn').disabled = false;
+          el('cancel-avail-btn').disabled = false;
+        }
+      }catch(e){
+        console.error('Failed to load availability:', e);
+      }
+    });
+  }
+
+  function renderAvailSlots(times){
+    const availTimes = el('avail-times');
+    availTimes.innerHTML = '';
+    const allSlots = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30'];
+    allSlots.forEach(slot=>{
+      const b = document.createElement('button');
+      b.className = 'time-slot' + (times.includes(slot) ? ' selected' : '');
+      b.textContent = slot;
+      b.addEventListener('click', ()=>{
+        if(times.includes(slot)){
+          times.splice(times.indexOf(slot), 1);
+          b.classList.remove('selected');
+        }else{
+          times.push(slot);
+          b.classList.add('selected');
+        }
+      });
+      availTimes.appendChild(b);
+    });
+  }
+
+  const enterAvailBtn = el('enter-avail-btn');
+  if(enterAvailBtn){
+    enterAvailBtn.addEventListener('click', ()=>{
+      const date = el('avail-date').value;
+      if(!date) return;
+      currentAvailTimes = [];
+      renderAvailSlots([]);
+      el('confirm-avail-btn').disabled = false;
+      el('cancel-avail-btn').disabled = false;
+    });
+  }
+
+  const editAvailBtn = el('edit-avail-btn');
+  if(editAvailBtn){
+    editAvailBtn.addEventListener('click', ()=>{
+      // Already loaded, just enable editing
+    });
+  }
+
+  const confirmAvailBtn = el('confirm-avail-btn');
+  if(confirmAvailBtn){
+    confirmAvailBtn.addEventListener('click', async ()=>{
+      const date = el('avail-date').value;
+      const user = currentUser();
+      if(!date || !user) return;
+      try{
+        const res = await fetch('/api/set-availability', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({employee_id: user.id, date: date, times: currentAvailTimes})
+        });
+        if(res.ok){
+          alert('Availability updated successfully!');
+        }
+      }catch(e){
+        console.error('Failed to set availability:', e);
+      }
+    });
+  }
+
+  const cancelAvailBtn = el('cancel-avail-btn');
+  if(cancelAvailBtn){
+    cancelAvailBtn.addEventListener('click', async ()=>{
+      const date = el('avail-date').value;
+      const user = currentUser();
+      if(!date || !user) return;
+      try{
+        const res = await fetch('/api/set-availability', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({employee_id: user.id, date: date, times: []})
+        });
+        if(res.ok){
+          currentAvailTimes = [];
+          renderAvailSlots([]);
+          alert('Availability cancelled!');
+        }
+      }catch(e){
+        console.error('Failed to cancel availability:', e);
+      }
+    });
+  }
+
+  // Update workload
+  const updateWorkloadBtn = el('update-workload-btn');
+  if(updateWorkloadBtn){
+    updateWorkloadBtn.addEventListener('click', async ()=>{
+      const hours = el('workload-hours').value;
+      const user = currentUser();
+      if(!user) return;
+      try{
+        const res = await fetch('/api/set-workload', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({employee_id: user.id, hours: hours})
+        });
+        if(res.ok){
+          alert('Workload updated successfully!');
+        }
+      }catch(e){
+        console.error('Failed to update workload:', e);
+      }
+    });
+  }
+
+  // Select schedule
+  const selectScheduleBtn = el('select-schedule-btn');
+  if(selectScheduleBtn){
+    selectScheduleBtn.addEventListener('click', async ()=>{
+      const template = el('schedule-template').value;
+      const user = currentUser();
+      if(!user) return;
+      try{
+        const res = await fetch('/api/select-schedule', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({employee_id: user.id, template: template})
+        });
+        if(res.ok){
+          alert('Schedule selected successfully!');
+        }
+      }catch(e){
+        console.error('Failed to select schedule:', e);
+      }
+    });
+  }
+
   // wire events
   if(empSelect) empSelect.addEventListener('change', ()=>{ if(employeeView.hidden) loadAvailability(); else loadWeeklyBookings(empSelect.value, weekStartInput.value); });
   if(dateInput) dateInput.addEventListener('change', loadAvailability);
@@ -457,6 +680,7 @@ if(window.location.pathname === '/calendar'){
       if(user.role === 'employee'){
         clientView.hidden = true;
         employeeView.hidden = false;
+        managerView.hidden = true;
         // ensure employee select exists so we can set it
         await loadEmployees(user.id);
         selectedEmp = user.id;
@@ -466,6 +690,37 @@ if(window.location.pathname === '/calendar'){
         const mondayStr = monday.toISOString().slice(0,10);
         if(weekStartInput) weekStartInput.value = mondayStr;
         await loadWeeklyBookings(selectedEmp, mondayStr);
+
+        // Initialize tabs
+        const scheduleTab = el('schedule-tab');
+        const profileTab = el('profile-tab');
+        const scheduleContent = el('schedule-content');
+        const profileContent = el('profile-content');
+
+        if(scheduleTab) scheduleTab.addEventListener('click', ()=>{
+          scheduleTab.classList.add('active');
+          profileTab.classList.remove('active');
+          scheduleContent.hidden = false;
+          profileContent.hidden = true;
+        });
+
+        if(profileTab) profileTab.addEventListener('click', ()=>{
+          profileTab.classList.add('active');
+          scheduleTab.classList.remove('active');
+          scheduleContent.hidden = true;
+          profileContent.hidden = false;
+          loadEmployeeProfile(user.id);
+        });
+
+        // Load profile initially if profile tab is active, but start with schedule
+        return;
+      }
+
+      // Manager view (if manager credentials logged in as employee role)
+      if(user.role === 'manager'){
+        clientView.hidden = true;
+        employeeView.hidden = true;
+        managerView.hidden = false;
         return;
       }
 
@@ -589,4 +844,424 @@ if(window.location.pathname === '/calendar'){
       alert('Network error: ' + e.message);
     }
   };
+
+  // Booking details modal (for viewing details from employee/manager view)
+  const closeDetailsBtn = el('close-booking-details-btn');
+  if(closeDetailsBtn){
+    closeDetailsBtn.addEventListener('click', ()=>{
+      el('booking-details-modal').hidden = true;
+    });
+  }
+
+  window.showBookingDetails = async function(bookingId){
+    try{
+      const res = await fetch(`/api/manager/booking-details?booking_id=${encodeURIComponent(bookingId)}`);
+      if(res.ok){
+        const data = await res.json();
+        const booking = data.booking;
+        const html = `
+          <div class="profile-field">
+            <div class="profile-label">Client Name</div>
+            <div class="profile-value">${booking.client_name}</div>
+          </div>
+          <div class="profile-field">
+            <div class="profile-label">Email</div>
+            <div class="profile-value">${booking.email || 'N/A'}</div>
+          </div>
+          <div class="profile-field">
+            <div class="profile-label">Phone</div>
+            <div class="profile-value">${booking.phone || 'N/A'}</div>
+          </div>
+          <div class="profile-field">
+            <div class="profile-label">Address</div>
+            <div class="profile-value">${booking.street || 'N/A'}<br>${booking.city || ''}, ${booking.province || ''} ${booking.postal || ''}<br>${booking.country || ''}</div>
+          </div>
+          <div class="profile-field">
+            <div class="profile-label">Appointment Date & Time</div>
+            <div class="profile-value">${booking.date} at ${booking.time}</div>
+          </div>
+          <div class="profile-field">
+            <div class="profile-label">Duration</div>
+            <div class="profile-value">${booking.duration} minutes</div>
+          </div>
+          <div class="profile-field">
+            <div class="profile-label">Notes</div>
+            <div class="profile-value">${booking.notes || 'N/A'}</div>
+          </div>
+        `;
+        el('booking-details-content').innerHTML = html;
+        el('booking-details-modal').hidden = false;
+      }
+    }catch(e){
+      console.error('Failed to load booking details:', e);
+    }
+  };
+
+  // ============= MANAGER VIEW =============
+  if(managerView){
+    const managerDashboardTab = el('manager-dashboard-tab');
+    const managerScheduleTab = el('manager-schedule-tab');
+    const managerReportsTab = el('manager-reports-tab');
+    const managerDashboardContent = el('manager-dashboard-content');
+    const managerScheduleContent = el('manager-schedule-content');
+    const managerReportsContent = el('manager-reports-content');
+    const managerEmpSelect = el('manager-emp-select');
+    const managerWeeklyBookings = el('manager-weekly-bookings');
+    const managerWeekStart = el('manager-week-start');
+
+    if(managerDashboardTab){
+      managerDashboardTab.addEventListener('click', ()=>{
+        managerDashboardTab.classList.add('active');
+        managerScheduleTab.classList.remove('active');
+        managerReportsTab.classList.remove('active');
+        managerDashboardContent.hidden = true;
+        managerScheduleContent.hidden = true;
+        managerReportsContent.hidden = false;
+        loadManagerSummary();
+      });
+    }
+
+    if(managerScheduleTab){
+      managerScheduleTab.addEventListener('click', ()=>{
+        managerScheduleTab.classList.add('active');
+        managerDashboardTab.classList.remove('active');
+        managerReportsTab.classList.remove('active');
+        managerDashboardContent.hidden = true;
+        managerScheduleContent.hidden = false;
+        managerReportsContent.hidden = true;
+      });
+    }
+
+    if(managerReportsTab){
+      managerReportsTab.addEventListener('click', ()=>{
+        managerReportsTab.classList.add('active');
+        managerDashboardTab.classList.remove('active');
+        managerScheduleTab.classList.remove('active');
+        managerDashboardContent.hidden = true;
+        managerScheduleContent.hidden = true;
+        managerReportsContent.hidden = false;
+      });
+    }
+
+    async function loadManagerSummary(){
+      try{
+        const res = await fetch('/api/manager/summary');
+        const summary = await res.json();
+        let html = '<div class="manager-summary">';
+        for(const empId in summary){
+          const emp = summary[empId];
+          html += `
+            <div class="manager-summary-card">
+              <h4>${emp.name}</h4>
+              <div class="stat-value">${emp.total_bookings}</div>
+              <div class="stat-label">Total Bookings</div>
+              <div class="stat-value">${emp.total_hours}h</div>
+              <div class="stat-label">Total Hours</div>
+            </div>
+          `;
+        }
+        html += '</div>';
+        el('manager-summary').innerHTML = html;
+      }catch(e){
+        console.error('Failed to load manager summary:', e);
+      }
+    }
+
+    async function loadManagerEmployees(){
+      try{
+        const res = await fetch('/api/employees');
+        const list = await res.json();
+        managerEmpSelect.innerHTML = '';
+        list.forEach(e=>{
+          const o = document.createElement('option');
+          o.value = e.id;
+          o.textContent = e.name;
+          managerEmpSelect.appendChild(o);
+        });
+        // Also populate report filter
+        const reportEmpSelect = el('report-emp-select');
+        if(reportEmpSelect){
+          reportEmpSelect.innerHTML = '<option value="">All Employees</option>';
+          list.forEach(e=>{
+            const o = document.createElement('option');
+            o.value = e.id;
+            o.textContent = e.name;
+            reportEmpSelect.appendChild(o);
+          });
+        }
+      }catch(e){
+        console.error('Failed to load employees:', e);
+      }
+    }
+
+    async function loadManagerWeekly(empId, weekStart){
+      if(!empId || !weekStart) return;
+      try{
+        const res = await fetch(`/api/bookings?employee_id=${encodeURIComponent(empId)}&week_start=${encodeURIComponent(weekStart)}`);
+        if(res.ok){
+          const list = await res.json();
+          renderManagerWeekly(list, weekStart);
+        }
+      }catch(e){
+        console.error('Failed to load manager weekly:', e);
+      }
+    }
+
+    function renderManagerWeekly(list, weekStart){
+      const ws = new Date(weekStart);
+      const days = [];
+      for(let i=0;i<7;i++){
+        const d = new Date(ws); d.setDate(ws.getDate()+i);
+        const key = d.toISOString().slice(0,10);
+        const dayName = d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
+        days.push({key, label: dayName, items: []});
+      }
+      list.forEach(b=>{
+        const day = days.find(d=>d.key===b.date);
+        if(day) day.items.push(b);
+      });
+
+      managerWeeklyBookings.innerHTML = '';
+      days.forEach(d=>{
+        const cell = document.createElement('div');
+        cell.className = 'day-cell';
+        cell.dataset.date = d.key;
+        cell.style.cursor = 'pointer';
+
+        const h = document.createElement('h4');
+        h.textContent = d.label;
+        cell.appendChild(h);
+
+        if(d.items.length===0){
+          const p = document.createElement('div');
+          p.className='no-bookings';
+          p.textContent = 'No bookings - Click to add';
+          cell.appendChild(p);
+        }else{
+          d.items.forEach(it=>{
+            const p = document.createElement('div');
+            p.className = 'booking-item';
+            p.style.cursor = 'pointer';
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'time';
+            timeSpan.textContent = it.time;
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'name';
+            nameSpan.textContent = it.client_name;
+            p.appendChild(timeSpan);
+            p.appendChild(nameSpan);
+            p.addEventListener('click', ()=>{ window.showBookingDetails(it.id); });
+            cell.appendChild(p);
+          });
+        }
+
+        cell.addEventListener('click', ()=>{
+          openManagerAssignBooking(managerEmpSelect.value, d.key);
+        });
+
+        managerWeeklyBookings.appendChild(cell);
+      });
+    }
+
+    function openManagerAssignBooking(empId, date){
+      const timeStr = prompt('Enter time (HH:MM) - e.g., 14:00:');
+      if(!timeStr) return;
+      if(!/^\d{2}:\d{2}$/.test(timeStr)){
+        alert('Invalid time format. Use HH:MM');
+        return;
+      }
+
+      const modal = el('manager-assign-booking-modal');
+      if(!modal) return;
+
+      modal.dataset.empId = empId;
+      modal.dataset.date = date;
+
+      el('manager-assign-date').value = date;
+      el('manager-assign-time').value = timeStr;
+      el('manager-assign-employee').value = empId;
+
+      // Clear form
+      el('manager-assign-name').value = '';
+      el('manager-assign-email').value = '';
+      el('manager-assign-phone').value = '';
+      el('manager-assign-street').value = '';
+      el('manager-assign-city').value = '';
+      el('manager-assign-province').value = '';
+      el('manager-assign-country').value = '';
+      el('manager-assign-postal').value = '';
+      el('manager-assign-duration').value = '60';
+      el('manager-assign-notes').value = '';
+
+      modal.hidden = false;
+    }
+
+    const managerAssignForm = el('manager-assign-form');
+    if(managerAssignForm){
+      managerAssignForm.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        const modal = el('manager-assign-booking-modal');
+        const empId = el('manager-assign-employee').value;
+        const date = el('manager-assign-date').value;
+        const time = el('manager-assign-time').value;
+        const name = el('manager-assign-name').value.trim();
+        const email = el('manager-assign-email').value.trim();
+        const phone = el('manager-assign-phone').value.trim();
+        const street = el('manager-assign-street').value.trim();
+        const city = el('manager-assign-city').value.trim();
+        const province = el('manager-assign-province').value.trim();
+        const country = el('manager-assign-country').value.trim();
+        const postal = el('manager-assign-postal').value.trim();
+        const duration = parseInt(el('manager-assign-duration').value) || 60;
+        const notes = el('manager-assign-notes').value.trim();
+
+        if(!name || !email || !phone || !street || !city || !province || !country || !postal){
+          alert('Please fill in all required fields');
+          return;
+        }
+
+        try{
+          const res = await fetch('/api/manager/assign-booking', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+              employee_id: empId,
+              date: date,
+              time: time,
+              client_name: name,
+              email: email,
+              phone: phone,
+              street: street,
+              city: city,
+              province: province,
+              country: country,
+              postal: postal,
+              duration: duration,
+              notes: notes
+            })
+          });
+          const data = await res.json();
+          if(data.success){
+            alert('Booking assigned successfully!');
+            modal.hidden = true;
+            loadManagerWeekly(empId, managerWeekStart.value);
+          }else{
+            alert('Error: ' + (data.error || 'Failed to assign booking'));
+          }
+        }catch(e){
+          console.error('Failed to assign booking:', e);
+        }
+      });
+    }
+
+    const managerAssignCancel = el('manager-assign-cancel');
+    if(managerAssignCancel){
+      managerAssignCancel.addEventListener('click', ()=>{
+        el('manager-assign-booking-modal').hidden = true;
+      });
+    }
+
+    if(managerEmpSelect){
+      managerEmpSelect.addEventListener('change', ()=>{
+        loadManagerWeekly(managerEmpSelect.value, managerWeekStart.value);
+      });
+    }
+
+    if(managerWeekStart){
+      managerWeekStart.addEventListener('change', ()=>{
+        loadManagerWeekly(managerEmpSelect.value, managerWeekStart.value);
+      });
+    }
+
+    // Reports
+    const generateReportBtn = el('generate-report-btn');
+    if(generateReportBtn){
+      generateReportBtn.addEventListener('click', async ()=>{
+        const empId = el('report-emp-select').value;
+        const startDate = el('report-start').value;
+        const endDate = el('report-end').value;
+        const format = el('report-format').value;
+
+        try{
+          let url = `/api/manager/reports?format=${encodeURIComponent(format)}`;
+          if(empId) url += `&employee_id=${encodeURIComponent(empId)}`;
+          if(startDate) url += `&start_date=${encodeURIComponent(startDate)}`;
+          if(endDate) url += `&end_date=${encodeURIComponent(endDate)}`;
+
+          const res = await fetch(url);
+          const data = await res.json();
+
+          if(data.success){
+            let html = `<div style="margin-top:20px">
+              <div style="display:flex;gap:20px;margin-bottom:20px">
+                <div style="flex:1">
+                  <div style="font-size:28px;font-weight:700;color:var(--primary-blue)">${data.total_bookings}</div>
+                  <div style="font-size:12px;color:var(--neutral-gray);text-transform:uppercase">Total Bookings</div>
+                </div>
+                <div style="flex:1">
+                  <div style="font-size:28px;font-weight:700;color:var(--primary-blue)">${data.total_hours}h</div>
+                  <div style="font-size:12px;color:var(--neutral-gray);text-transform:uppercase">Total Hours</div>
+                </div>
+              </div>
+              <table class="report-table">
+                <thead>
+                  <tr>
+                    <th>Booking ID</th>
+                    <th>Employee</th>
+                    <th>Client</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Duration</th>
+                  </tr>
+                </thead>
+                <tbody>`;
+
+            data.bookings.forEach(b=>{
+              html += `<tr>
+                <td>${b.id}</td>
+                <td>${b.employee_id}</td>
+                <td>${b.client_name}</td>
+                <td>${b.date}</td>
+                <td>${b.time}</td>
+                <td>${b.duration}m</td>
+              </tr>`;
+            });
+
+            html += '</tbody></table></div>';
+            el('report-results').innerHTML = html;
+            el('download-report-btn').disabled = false;
+          }
+        }catch(e){
+          console.error('Failed to generate report:', e);
+        }
+      });
+    }
+
+    const downloadReportBtn = el('download-report-btn');
+    if(downloadReportBtn){
+      downloadReportBtn.addEventListener('click', ()=>{
+        const resultsText = el('report-results').innerText;
+        const blob = new Blob([resultsText], {type: 'text/plain'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'report_' + new Date().toISOString().slice(0,10) + '.txt';
+        a.click();
+      });
+    }
+
+    // Initialize manager view on load
+    (async ()=>{
+      await loadManagerEmployees();
+      const today = new Date(); const day = today.getDay(); const diff = (day + 6) % 7;
+      const monday = new Date(today); monday.setDate(today.getDate() - diff);
+      const mondayStr = monday.toISOString().slice(0,10);
+      managerWeekStart.value = mondayStr;
+      await loadManagerSummary();
+      await loadManagerWeekly(managerEmpSelect.value, mondayStr);
+
+      // Initialize tab click handlers
+      if(managerDashboardTab) managerDashboardTab.click();
+    })();
+  }
 }

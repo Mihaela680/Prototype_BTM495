@@ -131,91 +131,216 @@
         </div>
       </div>
 
-      <!-- Employee view: see a week overview of assigned bookings -->
+      <!-- Employee view: tabs for Schedule and Profile -->
       <div class="employee-view" hidden>
-        <div class="controls">
-          <div style="width:220px">
-            <label for="week-start">Week starting (Monday)</label>
-            <input id="week-start" type="date">
+        <div class="tabs">
+          <button id="schedule-tab" class="tab-btn active">Schedule</button>
+          <button id="profile-tab" class="tab-btn">Profile</button>
+        </div>
+
+        <div id="schedule-content">
+          <div class="controls">
+            <div style="width:220px">
+              <label for="week-start">Week starting (Monday)</label>
+              <input id="week-start" type="date">
+            </div>
+          </div>
+          <div id="weekly-bookings"></div>
+          <p class="hint" style="margin-top:20px;">💡 Click on a day cell to create a new booking</p>
+        </div>
+
+        <div id="profile-content" hidden>
+          <h3>Employee Profile</h3>
+          <div id="employee-profile-info"></div>
+
+          <h4>Availability Management</h4>
+          <div id="availability-section">
+            <div class="controls">
+              <div style="width:220px">
+                <label for="avail-date">Select Date</label>
+                <input id="avail-date" type="date">
+              </div>
+              <button id="load-avail-btn">Load Availability</button>
+            </div>
+            <div id="avail-times" class="time-slots"></div>
+            <div class="form-actions">
+              <button id="enter-avail-btn">Enter Availability</button>
+              <button id="edit-avail-btn">Edit Availability</button>
+              <button id="confirm-avail-btn" disabled>Confirm Availability</button>
+              <button id="cancel-avail-btn" disabled>Cancel Availability</button>
+            </div>
+          </div>
+
+          <h4>Workload Management</h4>
+          <div id="workload-section">
+            <label for="workload-hours">Max Hours per Week</label>
+            <input id="workload-hours" type="number" min="0" step="1" value="40">
+            <button id="update-workload-btn">Update Workload</button>
+          </div>
+
+          <h4>Schedule Selection</h4>
+          <div id="schedule-selection">
+            <select id="schedule-template">
+              <option value="standard">Standard (9-5 Mon-Fri)</option>
+              <option value="part-time">Part-time (9-1 Mon-Fri)</option>
+              <option value="weekend">Weekend (Sat-Sun 10-4)</option>
+            </select>
+            <button id="select-schedule-btn">Select Schedule</button>
           </div>
         </div>
-        <div id="weekly-bookings"></div>
-        <p class="hint" style="margin-top:20px;">💡 Click on a day cell to create a new booking</p>
       </div>
 
-      <!-- Employee booking form modal -->
-      <div id="employee-booking-modal" class="modal" hidden>
+      <!-- Booking Details Modal (for employee/manager to see details) -->
+      <div id="booking-details-modal" class="modal" hidden>
         <div class="modal-content">
-          <h3>Create Client Booking</h3>
-          <form id="employee-booking-form">
-            <div class="form-row">
+          <h3>Booking Details</h3>
+          <div id="booking-details-content"></div>
+          <div class="form-actions">
+            <button id="close-booking-details-btn" class="btn-secondary">Close</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Manager view -->
+      <div class="manager-view" hidden>
+        <div class="tabs">
+          <button id="manager-schedule-tab" class="tab-btn active">Schedule</button>
+          <button id="manager-dashboard-tab" class="tab-btn">Dashboard</button>
+          <button id="manager-reports-tab" class="tab-btn">Reports</button>
+        </div>
+
+        <!-- Schedule Content (Vertical Calendar) -->
+        <div id="manager-schedule-content">
+          <div class="controls">
+            <div style="flex:1">
+              <label for="manager-emp-select">Select Employee</label>
+              <select id="manager-emp-select"></select>
+            </div>
+            <div style="width:220px">
+              <label for="manager-week-start">Week starting (Monday)</label>
+              <input id="manager-week-start" type="date">
+            </div>
+          </div>
+          <div id="manager-weekly-bookings"></div>
+          <p class="hint" style="margin-top:20px;">💡 Click on a day cell or booking to assign a new booking</p>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div id="manager-dashboard-content" hidden>
+          <h3>Summary Dashboard</h3>
+          <div id="manager-summary"></div>
+        </div>
+
+        <!-- Reports Content -->
+        <div id="manager-reports-content" hidden>
+          <h3>Reports & Analytics</h3>
+          <div class="controls">
+            <div style="flex:1">
+              <label for="report-emp-select">Filter by Employee</label>
+              <select id="report-emp-select">
+                <option value="">All Employees</option>
+              </select>
+            </div>
+            <div style="width:150px">
+              <label for="report-start">Start Date</label>
+              <input id="report-start" type="date">
+            </div>
+            <div style="width:150px">
+              <label for="report-end">End Date</label>
+              <input id="report-end" type="date">
+            </div>
+            <div style="width:140px">
+              <label for="report-format">Format</label>
+              <select id="report-format">
+                <option value="json">JSON</option>
+                <option value="csv">CSV</option>
+              </select>
+            </div>
+            <button id="generate-report-btn">Generate Report</button>
+            <button id="download-report-btn" disabled>Download</button>
+          </div>
+          <div id="report-results"></div>
+        </div>
+
+        <!-- Assign Booking Modal -->
+        <div id="manager-assign-booking-modal" class="modal" hidden>
+          <div class="modal-content">
+            <h3>Assign Client Booking</h3>
+            <form id="manager-assign-form">
               <div class="form-group">
-                <label for="emp-booking-date">Date *</label>
-                <input id="emp-booking-date" type="text" disabled placeholder="Date will be auto-filled">
+                <label for="manager-assign-employee">Employee *</label>
+                <select id="manager-assign-employee" required></select>
               </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="manager-assign-date">Date *</label>
+                  <input id="manager-assign-date" type="text" disabled>
+                </div>
+                <div class="form-group">
+                  <label for="manager-assign-time">Time (HH:MM) *</label>
+                  <input id="manager-assign-time" type="text" required placeholder="14:00">
+                </div>
+              </div>
+
               <div class="form-group">
-                <label for="emp-booking-time">Time (HH:MM) *</label>
-                <input id="emp-booking-time" type="text" required placeholder="14:00">
+                <label for="manager-assign-name">Client Full Name *</label>
+                <input id="manager-assign-name" type="text" required>
               </div>
-            </div>
 
-            <div class="form-group">
-              <label for="emp-client-full-name">Full Name *</label>
-              <input id="emp-client-full-name" type="text" required placeholder="John Doe">
-            </div>
-
-            <div class="form-group">
-              <label for="emp-client-email">Email Address *</label>
-              <input id="emp-client-email" type="email" required placeholder="john@example.com">
-            </div>
-
-            <div class="form-group">
-              <label for="emp-client-phone">Phone Number *</label>
-              <input id="emp-client-phone" type="tel" required placeholder="(123) 456-7890">
-            </div>
-
-            <div class="form-group">
-              <label for="emp-client-street">Street Address *</label>
-              <input id="emp-client-street" type="text" required placeholder="123 Main St">
-            </div>
-
-            <div class="form-row">
               <div class="form-group">
-                <label for="emp-client-city">City *</label>
-                <input id="emp-client-city" type="text" required placeholder="Montreal">
+                <label for="manager-assign-email">Email Address *</label>
+                <input id="manager-assign-email" type="email" required>
               </div>
+
               <div class="form-group">
-                <label for="emp-client-province">Province *</label>
-                <input id="emp-client-province" type="text" required placeholder="Quebec">
+                <label for="manager-assign-phone">Phone Number *</label>
+                <input id="manager-assign-phone" type="tel" required>
               </div>
-            </div>
 
-            <div class="form-row">
               <div class="form-group">
-                <label for="emp-client-country">Country *</label>
-                <input id="emp-client-country" type="text" required placeholder="Canada">
+                <label for="manager-assign-street">Street Address *</label>
+                <input id="manager-assign-street" type="text" required>
               </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="manager-assign-city">City *</label>
+                  <input id="manager-assign-city" type="text" required>
+                </div>
+                <div class="form-group">
+                  <label for="manager-assign-province">Province *</label>
+                  <input id="manager-assign-province" type="text" required>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="manager-assign-country">Country *</label>
+                  <input id="manager-assign-country" type="text" required>
+                </div>
+                <div class="form-group">
+                  <label for="manager-assign-postal">Postal Code *</label>
+                  <input id="manager-assign-postal" type="text" required>
+                </div>
+              </div>
+
               <div class="form-group">
-                <label for="emp-client-postal">Postal Code *</label>
-                <input id="emp-client-postal" type="text" required placeholder="H1A 1A1">
+                <label for="manager-assign-duration">Duration (minutes) *</label>
+                <input id="manager-assign-duration" type="number" required value="60" min="30" step="30">
               </div>
-            </div>
 
-            <div class="form-group">
-              <label for="emp-client-duration">Duration (minutes) *</label>
-              <input id="emp-client-duration" type="number" required placeholder="60" min="30" step="30" value="60">
-            </div>
+              <div class="form-group">
+                <label for="manager-assign-notes">Notes</label>
+                <textarea id="manager-assign-notes" placeholder="Additional notes..." rows="3"></textarea>
+              </div>
 
-            <div class="form-group">
-              <label for="emp-client-notes">Extra Notes</label>
-              <textarea id="emp-client-notes" placeholder="Any special requests or notes..." rows="4"></textarea>
-            </div>
-
-            <div class="form-actions">
-              <button type="button" id="emp-booking-cancel-btn" class="btn-secondary">Cancel</button>
-              <button type="submit" id="emp-booking-submit-btn" class="btn-primary">Create Booking</button>
-            </div>
-          </form>
+              <div class="form-actions">
+                <button type="button" id="manager-assign-cancel" class="btn-secondary">Cancel</button>
+                <button type="submit" class="btn-primary">Assign Booking</button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
 
@@ -225,3 +350,5 @@
   <script src="/static/script.js"></script>
 </body>
 </html>
+
+
