@@ -207,6 +207,7 @@
           <button id="manager-schedule-tab" class="tab-btn active">Schedule</button>
           <button id="manager-dashboard-tab" class="tab-btn">Dashboard</button>
           <button id="manager-reports-tab" class="tab-btn">Reports</button>
+          <button id="manager-profile-creation-tab" class="tab-btn">Profile Creation</button>
         </div>
 
         <!-- Schedule Content (Vertical Calendar) -->
@@ -342,10 +343,68 @@
             </form>
           </div>
         </div>
-      </div>
+
+        <!-- Profile Creation Content -->
+        <div id="manager-profile-creation-content" hidden>
+          <h3>Create Employee Profile</h3>
+          <p class="hint">Only managers can create employee accounts. The employee will use these credentials to log in.</p>
+
+          <form id="create-employee-form" style="max-width:560px">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="new-emp-id">Employee ID *</label>
+                <input id="new-emp-id" type="text" required placeholder="e.g. emp3">
+              </div>
+              <div class="form-group">
+                <label for="new-emp-name">Full Name *</label>
+                <input id="new-emp-name" type="text" required placeholder="Jane Smith">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="new-emp-username">Login Username *</label>
+                <input id="new-emp-username" type="text" required placeholder="emp3_login">
+              </div>
+              <div class="form-group">
+                <label for="new-emp-password">Temporary Password *</label>
+                <input id="new-emp-password" type="text" required placeholder="min 6 characters">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="new-emp-birthdate">Birthdate</label>
+                <input id="new-emp-birthdate" type="date">
+              </div>
+              <div class="form-group">
+                <label for="new-emp-sin">Social Insurance Number</label>
+                <input id="new-emp-sin" type="text" placeholder="000-000-000">
+              </div>
+            </div>
+
+            <div class="form-group" style="max-width:200px">
+              <label for="new-emp-workload">Max Hours / Week</label>
+              <input id="new-emp-workload" type="number" value="40" min="1" step="1">
+            </div>
+
+            <div class="form-actions">
+              <button type="reset" class="btn-secondary">Clear</button>
+              <button type="submit" class="btn-primary">Create Employee Profile</button>
+            </div>
+            <div id="create-emp-error" class="error" hidden></div>
+            <div id="create-emp-success" class="hint" hidden></div>
+          </form>
+
+          <h3 style="margin-top:36px">Current Employees</h3>
+          <div id="manager-employees-list"></div>
+        </div>
+
+      </div><!-- end manager-view -->
 
     </section>
   </main>
+
 
   <script src="/static/script.js"></script>
 </body>

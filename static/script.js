@@ -61,6 +61,7 @@ if(window.location.pathname === '/login'){
       userTypeView.hidden = true;
       loginFormView.hidden = false;
       signupPrompt.hidden = false;
+      if(el('employee-no-signup')) el('employee-no-signup').hidden = true;
       el('demo-hint').hidden = false;
     });
   }
@@ -71,6 +72,7 @@ if(window.location.pathname === '/login'){
       userTypeView.hidden = true;
       loginFormView.hidden = false;
       signupPrompt.hidden = true;
+      if(el('employee-no-signup')) el('employee-no-signup').hidden = false;
       el('demo-hint').hidden = false;
     });
   }
@@ -84,6 +86,8 @@ if(window.location.pathname === '/login'){
       el('login-username').value = '';
       el('login-password').value = '';
       el('login-error').hidden = true;
+      if(el('employee-no-signup')) el('employee-no-signup').hidden = true;
+      signupPrompt.hidden = true;
     });
   }
 
@@ -268,8 +272,20 @@ if(window.location.pathname === '/calendar'){
       const emp = modal.dataset.emp;
       const date = modal.dataset.date;
       const time = modal.dataset.time;
+      const user = currentUser();
 
-      await bookSlot(emp, date, time, name);
+      await bookSlot(emp, date, time, {
+        client_name: name,
+        client_id: user && user.role === 'client' ? user.id : undefined,
+        email,
+        phone,
+        street,
+        city,
+        province,
+        country,
+        postal,
+        notes
+      });
       modal.hidden = true;
     });
   }
@@ -284,16 +300,19 @@ if(window.location.pathname === '/calendar'){
     });
   }
 
-  async function bookSlot(emp,date,time,name){
+  async function bookSlot(emp,date,time,bookingData){
     try{
-      const res = await fetch('/api/book', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ employee_id: emp, date: date, time: time, client_name: name }) });
+      const payload = {
+        employee_id: emp,
+        date,
+        time,
+        ...bookingData
+      };
+      const res = await fetch('/api/book', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       const j = await res.json();
       if(!j.success){ showMsg(j.error || 'Booking failed'); return; }
 
-      // Show confirmation popup
       alert('Confirmation sent to your e-mail!');
-
-      // Reload availability to show updated time slots
       loadAvailability();
     }catch(e){ showMsg('Network error'); }
   }
@@ -345,6 +364,11 @@ if(window.location.pathname === '/calendar'){
         d.items.forEach(it=>{
           const p = document.createElement('div');
           p.className = 'booking-item';
+            p.style.cursor = 'pointer';
+            p.addEventListener('click', (e) => {
+                e.stopPropagation();
+            window.showBookingDetails(it.id);
+            });
           const timeSpan = document.createElement('span');
           timeSpan.className = 'time';
           timeSpan.textContent = it.time;
@@ -438,7 +462,19 @@ if(window.location.pathname === '/calendar'){
       const empId = modal.dataset.empId;
       const date = modal.dataset.date;
 
-      await bookSlotAsEmployee(empId, date, time, name, duration);
+      await bookSlotAsEmployee(empId, date, {
+        client_name: name,
+        email,
+        phone,
+        street,
+        city,
+        province,
+        country,
+        postal,
+        duration,
+        notes,
+        time
+      });
       modal.hidden = true;
     });
   }
@@ -451,15 +487,18 @@ if(window.location.pathname === '/calendar'){
     });
   }
 
-  async function bookSlotAsEmployee(empId, date, time, clientName, duration){
+  async function bookSlotAsEmployee(empId, date, bookingData){
     try{
-      const res = await fetch('/api/book', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ employee_id: empId, date: date, time: time, client_name: clientName, duration: duration }) });
+      const res = await fetch('/api/book', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ employee_id: empId, date, ...bookingData })
+      });
       const j = await res.json();
       if(!j.success){ showMsg(j.error || 'Booking failed'); return; }
 
       alert('Booking created successfully!');
 
-      // Reload weekly bookings
       if(!employeeView.hidden && weekStartInput.value){
         loadWeeklyBookings(empSelect.value, weekStartInput.value);
       }
@@ -676,7 +715,16 @@ if(window.location.pathname === '/calendar'){
     let selectedEmp = null;
     if(user){
       const greet = el('user-greeting'); if(greet){ greet.textContent = `Hello, ${user.name}`; greet.hidden = false; }
-      // if employee, show employee view only and set employee select to their id
+
+      // Manager check must come FIRST — managers have role='employee' so we check is_manager flag
+      if(user.is_manager){
+        clientView.hidden = true;
+        employeeView.hidden = true;
+        managerView.hidden = false;
+        return; // manager IIFE below handles all tab wiring independently
+      }
+
+      // if employee (non-manager), show employee view only and set employee select to their id
       if(user.role === 'employee'){
         clientView.hidden = true;
         employeeView.hidden = false;
@@ -716,13 +764,6 @@ if(window.location.pathname === '/calendar'){
         return;
       }
 
-      // Manager view (if manager credentials logged in as employee role)
-      if(user.role === 'manager'){
-        clientView.hidden = true;
-        employeeView.hidden = true;
-        managerView.hidden = false;
-        return;
-      }
 
       // Client view - load profile and bookings
       if(user.role === 'client'){
@@ -902,44 +943,45 @@ if(window.location.pathname === '/calendar'){
     const managerDashboardTab = el('manager-dashboard-tab');
     const managerScheduleTab = el('manager-schedule-tab');
     const managerReportsTab = el('manager-reports-tab');
+    const managerProfileCreationTab = el('manager-profile-creation-tab');
     const managerDashboardContent = el('manager-dashboard-content');
     const managerScheduleContent = el('manager-schedule-content');
     const managerReportsContent = el('manager-reports-content');
+    const managerProfileCreationContent = el('manager-profile-creation-content');
     const managerEmpSelect = el('manager-emp-select');
     const managerWeeklyBookings = el('manager-weekly-bookings');
     const managerWeekStart = el('manager-week-start');
 
+    function setManagerTab(active){
+      [managerDashboardTab,managerScheduleTab,managerReportsTab,managerProfileCreationTab].forEach(t=>{ if(t) t.classList.remove('active'); });
+      [managerDashboardContent,managerScheduleContent,managerReportsContent,managerProfileCreationContent].forEach(c=>{ if(c) c.hidden=true; });
+      if(active.tab) active.tab.classList.add('active');
+      if(active.content) active.content.hidden = false;
+    }
+
     if(managerDashboardTab){
       managerDashboardTab.addEventListener('click', ()=>{
-        managerDashboardTab.classList.add('active');
-        managerScheduleTab.classList.remove('active');
-        managerReportsTab.classList.remove('active');
-        managerDashboardContent.hidden = true;
-        managerScheduleContent.hidden = true;
-        managerReportsContent.hidden = false;
+        setManagerTab({tab: managerDashboardTab, content: managerDashboardContent});
         loadManagerSummary();
       });
     }
 
     if(managerScheduleTab){
       managerScheduleTab.addEventListener('click', ()=>{
-        managerScheduleTab.classList.add('active');
-        managerDashboardTab.classList.remove('active');
-        managerReportsTab.classList.remove('active');
-        managerDashboardContent.hidden = true;
-        managerScheduleContent.hidden = false;
-        managerReportsContent.hidden = true;
+        setManagerTab({tab: managerScheduleTab, content: managerScheduleContent});
       });
     }
 
     if(managerReportsTab){
       managerReportsTab.addEventListener('click', ()=>{
-        managerReportsTab.classList.add('active');
-        managerDashboardTab.classList.remove('active');
-        managerScheduleTab.classList.remove('active');
-        managerDashboardContent.hidden = true;
-        managerScheduleContent.hidden = true;
-        managerReportsContent.hidden = false;
+        setManagerTab({tab: managerReportsTab, content: managerReportsContent});
+      });
+    }
+
+    if(managerProfileCreationTab){
+      managerProfileCreationTab.addEventListener('click', ()=>{
+        setManagerTab({tab: managerProfileCreationTab, content: managerProfileCreationContent});
+        loadManagerEmployeeList();
       });
     }
 
@@ -989,9 +1031,110 @@ if(window.location.pathname === '/calendar'){
             reportEmpSelect.appendChild(o);
           });
         }
+        // Also populate manager-assign employee select
+        const assignEmpSelect = el('manager-assign-employee');
+        if(assignEmpSelect){
+          assignEmpSelect.innerHTML = '';
+          list.forEach(e=>{
+            const o = document.createElement('option');
+            o.value = e.id;
+            o.textContent = e.name;
+            assignEmpSelect.appendChild(o);
+          });
+        }
       }catch(e){
         console.error('Failed to load employees:', e);
       }
+    }
+
+    async function loadManagerEmployeeList(){
+      const user = currentUser();
+      if(!user) return;
+      try{
+        const res = await fetch(`/api/manager/list-employees?actor_id=${encodeURIComponent(user.id)}`);
+        const data = await res.json();
+        const container = el('manager-employees-list');
+        if(!container) return;
+        if(!data.success || !data.employees.length){
+          container.innerHTML = '<div class="hint">No employees found.</div>';
+          return;
+        }
+        container.innerHTML = `
+          <table class="report-table" style="margin-top:8px">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Username</th>
+                <th>Role</th>
+                <th>Birthdate</th>
+                <th>SIN</th>
+                <th>Hours/Week</th>
+                <th>Active</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.employees.map(e=>`
+                <tr>
+                  <td>${e.id}</td>
+                  <td>${e.name}</td>
+                  <td>${e.username || '—'}</td>
+                  <td>${e.role}</td>
+                  <td>${e.birthdate || '—'}</td>
+                  <td>${e.sin || '—'}</td>
+                  <td>${e.workload_hours}</td>
+                  <td>${e.is_active ? '✅' : '❌'}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>`;
+      }catch(e){
+        console.error('Failed to load employee list:', e);
+      }
+    }
+
+    // Create Employee form
+    const createEmpForm = el('create-employee-form');
+    if(createEmpForm){
+      createEmpForm.addEventListener('submit', async (evt)=>{
+        evt.preventDefault();
+        const user = currentUser();
+        const errDiv = el('create-emp-error');
+        const okDiv = el('create-emp-success');
+        errDiv.hidden = true; okDiv.hidden = true;
+
+        const payload = {
+          actor_id: user ? user.id : '',
+          employee_id: el('new-emp-id').value.trim(),
+          name: el('new-emp-name').value.trim(),
+          username: el('new-emp-username').value.trim(),
+          password: el('new-emp-password').value.trim(),
+          birthdate: el('new-emp-birthdate').value || '',
+          sin: el('new-emp-sin').value.trim(),
+          workload_hours: parseInt(el('new-emp-workload').value) || 40
+        };
+
+        try{
+          const res = await fetch('/api/manager/create-employee', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+          });
+          const data = await res.json();
+          if(data.success){
+            okDiv.textContent = `✅ ${data.message}`;
+            okDiv.hidden = false;
+            createEmpForm.reset();
+            loadManagerEmployeeList();
+            loadManagerEmployees();
+          } else {
+            errDiv.textContent = data.error || 'Failed to create employee';
+            errDiv.hidden = false;
+          }
+        }catch(e){
+          errDiv.textContent = 'Network error';
+          errDiv.hidden = false;
+        }
+      });
     }
 
     async function loadManagerWeekly(empId, weekStart){
@@ -1260,8 +1403,8 @@ if(window.location.pathname === '/calendar'){
       await loadManagerSummary();
       await loadManagerWeekly(managerEmpSelect.value, mondayStr);
 
-      // Initialize tab click handlers
-      if(managerDashboardTab) managerDashboardTab.click();
+      // Start on Schedule tab
+      setManagerTab({tab: managerScheduleTab, content: managerScheduleContent});
     })();
   }
 }
