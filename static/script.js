@@ -40,123 +40,52 @@ if(window.location.pathname === '/login'){
   const loginFormView = el('login-form-view');
   const backToTypeBtn = el('back-to-type');
   const signupPrompt = el('signup-prompt');
-  const signupLink = el('signup-link');
 
-  // If role is pre-selected, show login form directly
-  if (selectedUserType) {
+  if (selectedUserType && userTypeView && loginFormView) {
     userTypeView.hidden = true;
     loginFormView.hidden = false;
     if (selectedUserType === 'customer') {
-      signupPrompt.hidden = false;
-      el('demo-hint').hidden = false;
+      if (signupPrompt) signupPrompt.hidden = false;
+      if (el('employee-no-signup')) el('employee-no-signup').hidden = true;
     } else {
-      signupPrompt.hidden = true;
-      el('demo-hint').hidden = false;
+      if (signupPrompt) signupPrompt.hidden = true;
+      if (el('employee-no-signup')) el('employee-no-signup').hidden = false;
     }
+    if (el('demo-hint')) el('demo-hint').hidden = false;
   }
 
-  if(customerBtn){
+  if(customerBtn && userTypeView && loginFormView){
     customerBtn.addEventListener('click', ()=>{
       selectedUserType = 'customer';
       userTypeView.hidden = true;
       loginFormView.hidden = false;
-      signupPrompt.hidden = false;
-      if(el('employee-no-signup')) el('employee-no-signup').hidden = true;
-      el('demo-hint').hidden = false;
+      if (signupPrompt) signupPrompt.hidden = false;
+      if (el('employee-no-signup')) el('employee-no-signup').hidden = true;
+      if (el('demo-hint')) el('demo-hint').hidden = false;
     });
   }
 
-  if(employeeBtn){
+  if(employeeBtn && userTypeView && loginFormView){
     employeeBtn.addEventListener('click', ()=>{
       selectedUserType = 'employee';
       userTypeView.hidden = true;
       loginFormView.hidden = false;
-      signupPrompt.hidden = true;
-      if(el('employee-no-signup')) el('employee-no-signup').hidden = false;
-      el('demo-hint').hidden = false;
+      if (signupPrompt) signupPrompt.hidden = true;
+      if (el('employee-no-signup')) el('employee-no-signup').hidden = false;
+      if (el('demo-hint')) el('demo-hint').hidden = false;
     });
   }
 
-
-  if(backToTypeBtn){
+  if(backToTypeBtn && userTypeView && loginFormView){
     backToTypeBtn.addEventListener('click', ()=>{
       selectedUserType = null;
       userTypeView.hidden = false;
       loginFormView.hidden = true;
-      el('login-username').value = '';
-      el('login-password').value = '';
-      el('login-error').hidden = true;
-      if(el('employee-no-signup')) el('employee-no-signup').hidden = true;
-      signupPrompt.hidden = true;
-    });
-  }
-
-  // Signup link
-  if(signupLink){
-    signupLink.addEventListener('click', ()=>{
-      loginFormView.hidden = true;
-      el('signup-form-view').hidden = false;
-    });
-  }
-
-  const backToLoginBtn = el('back-to-login');
-  if(backToLoginBtn){
-    backToLoginBtn.addEventListener('click', ()=>{
-      el('signup-form-view').hidden = true;
-      loginFormView.hidden = false;
-      el('signup-username').value = '';
-      el('signup-email').value = '';
-      el('signup-password').value = '';
-      el('signup-password-confirm').value = '';
-      el('signup-error').hidden = true;
-    });
-  }
-
-  // Signup submit
-  const signupSubmitBtn = el('signup-submit');
-  if(signupSubmitBtn){
-    signupSubmitBtn.addEventListener('click', ()=>{
-      const username = el('signup-username').value.trim();
-      const email = el('signup-email').value.trim();
-      const password = el('signup-password').value;
-      const confirmPassword = el('signup-password-confirm').value;
-      const signupError = el('signup-error');
-      signupError.hidden = true;
-
-      if(!username || !email || !password || !confirmPassword){
-        signupError.textContent = 'All fields are required';
-        signupError.hidden = false;
-        return;
-      }
-
-      if(password !== confirmPassword){
-        signupError.textContent = 'Passwords do not match';
-        signupError.hidden = false;
-        return;
-      }
-
-      if(password.length < 6){
-        signupError.textContent = 'Password must be at least 6 characters';
-        signupError.hidden = false;
-        return;
-      }
-
-      // In a real app, send to backend. For now, just show success and redirect to login
-      sessionStorage.setItem('user', JSON.stringify({success: true, role: 'client', name: username, id: username}));
-      window.location.href = '/calendar';
-    });
-  }
-
-  const signupCancelBtn = el('signup-cancel');
-  if(signupCancelBtn){
-    signupCancelBtn.addEventListener('click', ()=>{
-      el('signup-form-view').hidden = true;
-      loginFormView.hidden = false;
-      el('signup-username').value = '';
-      el('signup-email').value = '';
-      el('signup-password').value = '';
-      el('signup-password-confirm').value = '';
-      el('signup-error').hidden = true;
+      if (el('login-username')) el('login-username').value = '';
+      if (el('login-password')) el('login-password').value = '';
+      if (el('login-error')) el('login-error').hidden = true;
+      if (el('employee-no-signup')) el('employee-no-signup').hidden = true;
+      if (signupPrompt) signupPrompt.hidden = true;
     });
   }
 
@@ -171,7 +100,6 @@ if(window.location.pathname === '/login'){
         const res = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username:u,password:p}) });
         if(res.status !== 200){ const j = await res.json(); err.textContent = j.error || 'Login failed'; err.hidden = false; return; }
         const j = await res.json();
-        // save user in sessionStorage (not secure, demo only)
         sessionStorage.setItem('user', JSON.stringify(j));
         window.location.href = '/calendar';
       }catch(e){ err.textContent = 'Network error'; err.hidden = false; }
@@ -182,6 +110,15 @@ if(window.location.pathname === '/login'){
 // ============= CALENDAR PAGE =============
 if(window.location.pathname === '/calendar'){
   const back = el('back-home'); if(back) back.addEventListener('click', ()=>{ window.location.href = '/'; });
+  const logoutBtn = el('logout-btn');
+  if(logoutBtn){
+    // Hidden by default; only employee/manager should see it.
+    logoutBtn.hidden = true;
+    logoutBtn.addEventListener('click', ()=>{
+      sessionStorage.removeItem('user');
+      window.location.href = '/';
+    });
+  }
   const empSelect = el('employee-select');
   const dateInput = el('book-date');
   const avail = el('availability');
@@ -201,6 +138,11 @@ if(window.location.pathname === '/calendar'){
       if(!empSelect) return;
       empSelect.innerHTML = '';
       list.forEach(e=>{ const o = document.createElement('option'); o.value = e.id; o.textContent = e.name; empSelect.appendChild(o); });
+      // Client can choose Other to create an unassigned booking for manager assignment.
+      const other = document.createElement('option');
+      other.value = '__other__';
+      other.textContent = 'Other (Manager will assign)';
+      empSelect.appendChild(other);
       if(selectedId) empSelect.value = selectedId;
     }catch(e){ showMsg('Failed to load employees'); }
   }
@@ -208,12 +150,33 @@ if(window.location.pathname === '/calendar'){
   async function loadAvailability(){
     const emp = empSelect.value; const date = dateInput.value;
     if(!emp || !date) return;
+
+    // If client selects Other, skip employee availability and allow direct booking as unassigned.
+    if(emp === '__other__'){
+      renderSlots(generateDefaultSlots(), '__other__', date);
+      return;
+    }
+
     try{
       const res = await fetch(`/api/availability?employee_id=${encodeURIComponent(emp)}&date=${encodeURIComponent(date)}`);
       if(res.status !== 200){ showMsg('Failed to load availability'); return; }
       const j = await res.json();
       renderSlots(j.slots, emp, date);
     }catch(e){ showMsg('Network error'); }
+  }
+
+  function generateDefaultSlots(){
+    const out = [];
+    let h = 9;
+    let m = 0;
+    while(h < 17 || (h === 17 && m === 0)){
+      const hh = String(h).padStart(2, '0');
+      const mm = String(m).padStart(2, '0');
+      out.push({time: `${hh}:${mm}`, available: true});
+      m += 30;
+      if(m >= 60){ m = 0; h += 1; }
+    }
+    return out;
   }
 
   function renderSlots(slots, emp, date){
@@ -303,7 +266,7 @@ if(window.location.pathname === '/calendar'){
   async function bookSlot(emp,date,time,bookingData){
     try{
       const payload = {
-        employee_id: emp,
+        employee_id: (emp && emp !== '__other__') ? emp : null,
         date,
         time,
         ...bookingData
@@ -312,7 +275,7 @@ if(window.location.pathname === '/calendar'){
       const j = await res.json();
       if(!j.success){ showMsg(j.error || 'Booking failed'); return; }
 
-      alert('Confirmation sent to your e-mail!');
+      alert('Confirmation sent to your email!');
       loadAvailability();
     }catch(e){ showMsg('Network error'); }
   }
@@ -349,6 +312,8 @@ if(window.location.pathname === '/calendar'){
       cell.className = 'day-cell';
       cell.dataset.date = d.key;
       cell.style.cursor = 'pointer';
+      cell.style.minWidth = '0';
+      cell.style.boxSizing = 'border-box';
 
       const h = document.createElement('h4');
       h.textContent = d.label;
@@ -716,6 +681,10 @@ if(window.location.pathname === '/calendar'){
     if(user){
       const greet = el('user-greeting'); if(greet){ greet.textContent = `Hello, ${user.name}`; greet.hidden = false; }
 
+      if(logoutBtn){
+        logoutBtn.hidden = !(user.role === 'employee' || user.is_manager);
+      }
+
       // Manager check must come FIRST — managers have role='employee' so we check is_manager flag
       if(user.is_manager){
         clientView.hidden = true;
@@ -765,95 +734,23 @@ if(window.location.pathname === '/calendar'){
       }
 
 
-      // Client view - load profile and bookings
+      // Client view - direct booking flow (no profile/login required)
       if(user.role === 'client'){
         clientView.hidden = false;
         employeeView.hidden = true;
-
-        // Load client profile and bookings
-        try{
-          const res = await fetch(`/api/client-profile?client_id=${encodeURIComponent(user.id)}`);
-          if(res.ok){
-            const data = await res.json();
-            if(data.success){
-              // Show booking view if has profile, else new user view
-              const bookingView = el('client-booking-view');
-              const newUserView = el('client-new-user-view');
-
-              if(data.profile.email){
-                // Existing user with profile
-                bookingView.style.display = '';
-                newUserView.style.display = 'none';
-
-                // Display profile
-                const profileInfo = el('client-profile-info');
-                profileInfo.innerHTML = `
-                  <div class="profile-field">
-                    <div class="profile-label">Full Name</div>
-                    <div class="profile-value">${data.profile.name}</div>
-                  </div>
-                  <div class="profile-field">
-                    <div class="profile-label">Email</div>
-                    <div class="profile-value">${data.profile.email}</div>
-                  </div>
-                  <div class="profile-field">
-                    <div class="profile-label">Phone</div>
-                    <div class="profile-value">${data.profile.phone}</div>
-                  </div>
-                  <div class="profile-field">
-                    <div class="profile-label">Address</div>
-                    <div class="profile-value">${data.profile.street}<br>${data.profile.city}, ${data.profile.province} ${data.profile.postal}<br>${data.profile.country}</div>
-                  </div>
-                `;
-
-                // Display bookings
-                const bookingsList = el('client-bookings-list');
-                if(data.bookings && data.bookings.length > 0){
-                  bookingsList.innerHTML = data.bookings.map(b => `
-                    <div class="client-booking-card">
-                      <div class="booking-info">
-                        <div class="booking-time">${b.time}</div>
-                        <div class="booking-date">${b.date}</div>
-                        <div class="booking-employee">Employee: ${b.employee_id}</div>
-                      </div>
-                      <div class="booking-actions">
-                        <button class="modify-btn" onclick="modifyBooking('${b.id}')">Modify</button>
-                        <button class="cancel-btn" onclick="cancelBooking('${b.id}')">Cancel</button>
-                      </div>
-                    </div>
-                  `).join('');
-                } else {
-                  bookingsList.innerHTML = '<div class="no-bookings-msg">No bookings yet</div>';
-                }
-              } else {
-                // New user without profile
-                bookingView.style.display = 'none';
-                newUserView.style.display = '';
-              }
-            }
-          }
-
-          await loadEmployees();
-          if(!dateInput.value){ dateInput.value = new Date().toISOString().slice(0,10); }
-          await loadAvailability();
-        }catch(e){
-          console.error('Failed to load client profile:', e);
-          // Show new user view on error
-          el('client-booking-view').style.display = 'none';
-          el('client-new-user-view').style.display = '';
-          await loadEmployees();
-          if(!dateInput.value){ dateInput.value = new Date().toISOString().slice(0,10); }
-          await loadAvailability();
-        }
+        managerView.hidden = true;
+        await loadEmployees();
+        if(!dateInput.value){ dateInput.value = new Date().toISOString().slice(0,10); }
+        await loadAvailability();
         return;
       }
     }
 
     // default client view (not logged in)
+    if(logoutBtn) logoutBtn.hidden = true;
     clientView.hidden = false;
     employeeView.hidden = true;
-    el('client-booking-view').style.display = 'none';
-    el('client-new-user-view').style.display = '';
+    managerView.hidden = true;
     await loadEmployees();
     if(!dateInput.value){ dateInput.value = new Date().toISOString().slice(0,10); }
     await loadAvailability();
@@ -957,6 +854,13 @@ if(window.location.pathname === '/calendar'){
       [managerDashboardContent,managerScheduleContent,managerReportsContent,managerProfileCreationContent].forEach(c=>{ if(c) c.hidden=true; });
       if(active.tab) active.tab.classList.add('active');
       if(active.content) active.content.hidden = false;
+
+      const sideRow = el('manager-side-row');
+      if(sideRow){
+        const show = active.tab === managerScheduleTab;
+        sideRow.hidden = !show;
+        sideRow.style.display = show ? 'grid' : 'none';
+      }
     }
 
     if(managerDashboardTab){
@@ -1165,11 +1069,19 @@ if(window.location.pathname === '/calendar'){
       });
 
       managerWeeklyBookings.innerHTML = '';
+      managerWeeklyBookings.style.display = 'grid';
+      managerWeeklyBookings.style.gridTemplateColumns = 'repeat(7, minmax(0, 1fr))';
+      managerWeeklyBookings.style.gap = '8px';
+      managerWeeklyBookings.style.width = '100%';
+      managerWeeklyBookings.style.maxWidth = '100%';
+      managerWeeklyBookings.style.overflow = 'hidden';
       days.forEach(d=>{
         const cell = document.createElement('div');
         cell.className = 'day-cell';
         cell.dataset.date = d.key;
         cell.style.cursor = 'pointer';
+        cell.style.minWidth = '0';
+        cell.style.boxSizing = 'border-box';
 
         const h = document.createElement('h4');
         h.textContent = d.label;
@@ -1304,104 +1216,115 @@ if(window.location.pathname === '/calendar'){
       });
     }
 
+    function ensureManagerSidePanels(){
+      if(el('manager-unassigned-panel')) return;
+      const weeklyWrap = managerWeeklyBookings && managerWeeklyBookings.parentElement;
+      if(!weeklyWrap) return;
+      const row = document.createElement('div');
+      row.id = 'manager-side-row';
+      row.style.display = 'grid';
+      row.style.gridTemplateColumns = '1fr 1fr';
+      row.style.gap = '12px';
+      row.style.marginTop = '12px';
+      row.hidden = true;
+      row.style.display = 'none';
+
+      const left = document.createElement('div');
+      left.id = 'manager-unassigned-panel';
+      left.className = 'card';
+      left.innerHTML = '<h4>Unassigned Bookings</h4><div id="manager-unassigned-list" class="hint">No unassigned bookings</div>';
+
+      const right = document.createElement('div');
+      right.id = 'manager-effective-panel';
+      right.className = 'card';
+      right.innerHTML = '<h4>Effective Availability</h4><div id="manager-effective-list" class="hint">Select employee and date</div>';
+
+      row.appendChild(left);
+      row.appendChild(right);
+      weeklyWrap.parentElement.insertBefore(row, weeklyWrap.nextSibling);
+    }
+
+    async function loadManagerUnassigned(date){
+      const listEl = el('manager-unassigned-list');
+      if(!listEl) return;
+      try{
+        const url = date ? `/api/manager/unassigned-bookings?date=${encodeURIComponent(date)}` : '/api/manager/unassigned-bookings';
+        const res = await fetch(url);
+        const data = await res.json();
+        if(!data.success){ listEl.textContent = 'Failed to load unassigned bookings'; return; }
+        const items = data.bookings || [];
+        if(!items.length){ listEl.textContent = 'No unassigned bookings'; return; }
+        listEl.innerHTML = '';
+        items.forEach(b=>{
+          const row = document.createElement('div');
+          row.className = 'booking-item';
+          row.style.display = 'flex';
+          row.style.justifyContent = 'space-between';
+          row.style.alignItems = 'center';
+          row.innerHTML = `<span>${b.date} ${b.time} - ${b.client_name}</span>`;
+          const btn = document.createElement('button');
+          btn.textContent = 'Assign';
+          btn.addEventListener('click', async ()=>{
+            const empId = managerEmpSelect.value;
+            if(!empId){ alert('Select an employee first'); return; }
+            const assignRes = await fetch('/api/manager/assign-booking', {
+              method:'POST', headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({ booking_id: b.id, employee_id: empId })
+            });
+            const assignData = await assignRes.json();
+            if(!assignData.success){ alert(assignData.error || 'Failed to assign booking'); return; }
+            await loadManagerWeekly(empId, managerWeekStart.value);
+            await loadManagerUnassigned(date);
+            await loadManagerEffective(empId, date || managerWeekStart.value);
+          });
+          row.appendChild(btn);
+          listEl.appendChild(row);
+        });
+      }catch(e){ listEl.textContent = 'Network error loading unassigned bookings'; }
+    }
+
+    async function loadManagerEffective(empId, date){
+      const listEl = el('manager-effective-list');
+      if(!listEl || !empId || !date) return;
+      try{
+        const res = await fetch(`/api/manager/effective-availability?employee_id=${encodeURIComponent(empId)}&date=${encodeURIComponent(date)}`);
+        const data = await res.json();
+        if(!data.success){ listEl.textContent = 'Failed to load availability'; return; }
+        if(!data.slots || !data.slots.length){ listEl.textContent = 'No available slots for selected date'; return; }
+        listEl.innerHTML = data.slots.map(s=>`<span class="time-slot" style="display:inline-block;margin:4px">${s}</span>`).join('');
+      }catch(e){ listEl.textContent = 'Network error loading availability'; }
+    }
+
     if(managerEmpSelect){
       managerEmpSelect.addEventListener('change', ()=>{
-        loadManagerWeekly(managerEmpSelect.value, managerWeekStart.value);
+        const selectedDate = managerWeekStart.value;
+        loadManagerWeekly(managerEmpSelect.value, selectedDate);
+        loadManagerUnassigned(selectedDate);
+        loadManagerEffective(managerEmpSelect.value, selectedDate);
       });
     }
 
     if(managerWeekStart){
       managerWeekStart.addEventListener('change', ()=>{
-        loadManagerWeekly(managerEmpSelect.value, managerWeekStart.value);
-      });
-    }
-
-    // Reports
-    const generateReportBtn = el('generate-report-btn');
-    if(generateReportBtn){
-      generateReportBtn.addEventListener('click', async ()=>{
-        const empId = el('report-emp-select').value;
-        const startDate = el('report-start').value;
-        const endDate = el('report-end').value;
-        const format = el('report-format').value;
-
-        try{
-          let url = `/api/manager/reports?format=${encodeURIComponent(format)}`;
-          if(empId) url += `&employee_id=${encodeURIComponent(empId)}`;
-          if(startDate) url += `&start_date=${encodeURIComponent(startDate)}`;
-          if(endDate) url += `&end_date=${encodeURIComponent(endDate)}`;
-
-          const res = await fetch(url);
-          const data = await res.json();
-
-          if(data.success){
-            let html = `<div style="margin-top:20px">
-              <div style="display:flex;gap:20px;margin-bottom:20px">
-                <div style="flex:1">
-                  <div style="font-size:28px;font-weight:700;color:var(--primary-blue)">${data.total_bookings}</div>
-                  <div style="font-size:12px;color:var(--neutral-gray);text-transform:uppercase">Total Bookings</div>
-                </div>
-                <div style="flex:1">
-                  <div style="font-size:28px;font-weight:700;color:var(--primary-blue)">${data.total_hours}h</div>
-                  <div style="font-size:12px;color:var(--neutral-gray);text-transform:uppercase">Total Hours</div>
-                </div>
-              </div>
-              <table class="report-table">
-                <thead>
-                  <tr>
-                    <th>Booking ID</th>
-                    <th>Employee</th>
-                    <th>Client</th>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Duration</th>
-                  </tr>
-                </thead>
-                <tbody>`;
-
-            data.bookings.forEach(b=>{
-              html += `<tr>
-                <td>${b.id}</td>
-                <td>${b.employee_id}</td>
-                <td>${b.client_name}</td>
-                <td>${b.date}</td>
-                <td>${b.time}</td>
-                <td>${b.duration}m</td>
-              </tr>`;
-            });
-
-            html += '</tbody></table></div>';
-            el('report-results').innerHTML = html;
-            el('download-report-btn').disabled = false;
-          }
-        }catch(e){
-          console.error('Failed to generate report:', e);
-        }
-      });
-    }
-
-    const downloadReportBtn = el('download-report-btn');
-    if(downloadReportBtn){
-      downloadReportBtn.addEventListener('click', ()=>{
-        const resultsText = el('report-results').innerText;
-        const blob = new Blob([resultsText], {type: 'text/plain'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'report_' + new Date().toISOString().slice(0,10) + '.txt';
-        a.click();
+        const selectedDate = managerWeekStart.value;
+        loadManagerWeekly(managerEmpSelect.value, selectedDate);
+        loadManagerUnassigned(selectedDate);
+        loadManagerEffective(managerEmpSelect.value, selectedDate);
       });
     }
 
     // Initialize manager view on load
     (async ()=>{
       await loadManagerEmployees();
+      ensureManagerSidePanels();
       const today = new Date(); const day = today.getDay(); const diff = (day + 6) % 7;
       const monday = new Date(today); monday.setDate(today.getDate() - diff);
       const mondayStr = monday.toISOString().slice(0,10);
       managerWeekStart.value = mondayStr;
       await loadManagerSummary();
       await loadManagerWeekly(managerEmpSelect.value, mondayStr);
+      await loadManagerUnassigned(mondayStr);
+      await loadManagerEffective(managerEmpSelect.value, mondayStr);
 
       // Start on Schedule tab
       setManagerTab({tab: managerScheduleTab, content: managerScheduleContent});

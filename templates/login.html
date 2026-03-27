@@ -16,24 +16,8 @@
 
   <main>
     <section class="login-main app-view">
-      <!-- User Type Selection View -->
-      <div id="user-type-view" class="user-type-container">
-        <h2>Are you an employee or a customer?</h2>
-        <div class="user-type-buttons">
-          <button id="customer-btn" class="user-type-btn customer-btn" type="button">
-            <div class="icon">👤</div>
-            <div class="label">Customer</div>
-          </button>
-          <button id="employee-btn" class="user-type-btn employee-btn" type="button">
-            <div class="icon">👨‍💼</div>
-            <div class="label">Employee</div>
-          </button>
-        </div>
-      </div>
-
-      <!-- Login Form View -->
-      <div id="login-form-view" class="login-form" hidden>
-        <button id="back-to-type" class="back-link" type="button">← Change user type</button>
+      <div id="login-form-view" class="login-form">
+        <h2>Log in</h2>
 
         <label for="login-username">Username</label>
         <input id="login-username" type="text" placeholder="username" autocomplete="username">
@@ -46,40 +30,11 @@
           <button id="login-submit" type="button">Log in</button>
         </div>
         <div id="login-error" class="error" hidden></div>
-        <div class="hint" id="demo-hint">Demo: <strong>client1 / pass</strong> &nbsp;|&nbsp; <strong>emp1 / pass</strong> &nbsp;|&nbsp; <strong>mgr1 / pass</strong></div>
+        <div class="hint" id="demo-hint">Demo: <strong>emp1 / pass</strong> &nbsp;|&nbsp; <strong>mgr1 / pass</strong></div>
 
-        <div id="signup-prompt" class="signup-prompt" hidden>
-          Don't have an account? <button id="signup-link" class="link-btn" type="button">Create one here</button>
+        <div id="employee-no-signup" class="hint" style="color:#c0392b;background:#fdf2f2;border:1px solid #f5c6cb;padding:10px 14px;border-radius:6px;margin-top:12px;" hidden>
+          Employee accounts are created by the manager only. Please contact your manager if you do not have credentials.
         </div>
-
-        <div id="employee-no-signup" class="hint" hidden style="color:#c0392b;background:#fdf2f2;border:1px solid #f5c6cb;padding:10px 14px;border-radius:6px;margin-top:12px;">
-          🔒 Employee accounts are created by the manager only. Please contact your manager if you do not have credentials.
-        </div>
-      </div>
-
-      <!-- Signup Form View (for customers only) -->
-      <div id="signup-form-view" class="signup-form" hidden>
-        <button id="back-to-login" class="back-link" type="button">← Back to login</button>
-
-        <h3>Create an Account</h3>
-
-        <label for="signup-username">Username</label>
-        <input id="signup-username" type="text" placeholder="Choose a username" autocomplete="username">
-
-        <label for="signup-email">Email</label>
-        <input id="signup-email" type="email" placeholder="your@email.com" autocomplete="email">
-
-        <label for="signup-password">Password</label>
-        <input id="signup-password" type="password" placeholder="Enter a password" autocomplete="new-password">
-
-        <label for="signup-password-confirm">Confirm Password</label>
-        <input id="signup-password-confirm" type="password" placeholder="Confirm password" autocomplete="new-password">
-
-        <div class="login-actions">
-          <button id="signup-cancel" type="button">Cancel</button>
-          <button id="signup-submit" type="button">Create Account</button>
-        </div>
-        <div id="signup-error" class="error" hidden></div>
       </div>
     </section>
   </main>
@@ -87,6 +42,3 @@
   <script src="/static/script.js"></script>
 </body>
 </html>
-
-cd /Users/mihaelauntila/PycharmProjects/Prototype_BTM495
-python3 app.py

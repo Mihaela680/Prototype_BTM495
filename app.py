@@ -15,19 +15,6 @@ def utcnow():
 
 # Demo users and employees (seeded into DB on startup)
 DEMO_USERS = {
-    'client1': {
-        'password': 'pass',
-        'role': 'client',
-        'name': 'John Doe',
-        'id': 'client1',
-        'email': 'john.doe@example.com',
-        'phone': '(438) 123-4567',
-        'street': '123 Main Street',
-        'city': 'Montreal',
-        'province': 'Quebec',
-        'country': 'Canada',
-        'postal': 'H1A 1A1'
-    },
     'emp1': {'password': 'pass', 'role': 'employee', 'name': 'Employee One', 'id': 'emp1', 'birthdate': '1985-05-15', 'sin': '123-456-789'},
     'emp2': {'password': 'pass', 'role': 'employee', 'name': 'Employee Two', 'id': 'emp2', 'birthdate': '1990-10-20', 'sin': '987-654-321'},
     'emp3': {'password': 'pass', 'role': 'employee', 'name': 'Employee Three', 'id': 'emp3', 'birthdate': '1995-03-10', 'sin': '555-666-777'},
@@ -85,7 +72,7 @@ def init_db():
 
             CREATE TABLE IF NOT EXISTS appointments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                employee_id TEXT NOT NULL,
+                employee_id TEXT,
                 client_id TEXT,
                 client_name TEXT NOT NULL,
                 date TEXT NOT NULL,
@@ -127,6 +114,43 @@ def init_db():
             );
             '''
         )
+        # Backward-compatible migration: allow unassigned appointments (employee_id nullable)
+        cols = conn.execute("PRAGMA table_info(appointments)").fetchall()
+        emp_col = next((c for c in cols if c['name'] == 'employee_id'), None)
+        if emp_col and int(emp_col['notnull']) == 1:
+            conn.executescript(
+                '''
+                ALTER TABLE appointments RENAME TO appointments_old;
+                CREATE TABLE appointments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    employee_id TEXT,
+                    client_id TEXT,
+                    client_name TEXT NOT NULL,
+                    date TEXT NOT NULL,
+                    time TEXT NOT NULL,
+                    duration INTEGER NOT NULL DEFAULT 60,
+                    status TEXT NOT NULL DEFAULT 'booked' CHECK(status IN ('booked','canceled','completed')),
+                    email TEXT,
+                    phone TEXT,
+                    street TEXT,
+                    city TEXT,
+                    province TEXT,
+                    country TEXT,
+                    postal TEXT,
+                    notes TEXT,
+                    canceled_at TEXT,
+                    cancel_reason TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY(employee_id) REFERENCES employees(id)
+                );
+                INSERT INTO appointments
+                (id, employee_id, client_id, client_name, date, time, duration, status, email, phone, street, city, province, country, postal, notes, canceled_at, cancel_reason, created_at, updated_at)
+                SELECT id, employee_id, client_id, client_name, date, time, duration, status, email, phone, street, city, province, country, postal, notes, canceled_at, cancel_reason, created_at, updated_at
+                FROM appointments_old;
+                DROP TABLE appointments_old;
+                '''
+            )
 
 
 def seed_demo_data():
@@ -450,7 +474,7 @@ def api_book():
     client_name = data.get('client_name')
     duration = data.get('duration', 60)
 
-    if not all([employee_id, date, time, client_name]):
+    if not all([date, time, client_name]):
         return jsonify({'success': False, 'error': 'missing fields'}), 400
     try:
         datetime.strptime(date, '%Y-%m-%d')
@@ -461,7 +485,7 @@ def api_book():
 
     now = utcnow()
     with get_db() as conn:
-        if _conflict_exists(conn, employee_id, date, time, duration):
+        if employee_id and _conflict_exists(conn, employee_id, date, time, duration):
             return jsonify({'success': False, 'error': 'time slot conflict'}), 409
 
         if client_id:
@@ -844,19 +868,45 @@ def api_manager_assign_booking():
     date = data.get('date')
     time = data.get('time')
     duration = data.get('duration', 60)
+    booking_id = data.get('booking_id')
 
-    if not all([employee_id, client_name, date, time]):
-        return jsonify({'success': False, 'error': 'missing required fields'}), 400
-
-    try:
-        datetime.strptime(date, '%Y-%m-%d')
-        datetime.strptime(time, '%H:%M')
-        duration = int(duration)
-    except Exception:
-        return jsonify({'success': False, 'error': 'invalid time/duration format'}), 400
+    if not employee_id:
+        return jsonify({'success': False, 'error': 'employee_id required'}), 400
 
     now = utcnow()
     with get_db() as conn:
+        if booking_id:
+            db_id = int(str(booking_id).replace('b', '')) if str(booking_id).startswith('b') else int(booking_id)
+            row = conn.execute("SELECT * FROM appointments WHERE id=? AND status='booked'", (db_id,)).fetchone()
+            if not row:
+                return jsonify({'success': False, 'error': 'booking not found'}), 404
+            date = row['date']
+            time = row['time']
+            duration = int(row['duration'] or 60)
+            if _conflict_exists(conn, employee_id, date, time, duration, ignore_id=db_id):
+                return jsonify({'success': False, 'error': 'time slot conflict'}), 409
+            conn.execute(
+                "UPDATE appointments SET employee_id=?, updated_at=? WHERE id=?",
+                (employee_id, now, db_id)
+            )
+            conn.execute(
+                '''
+                INSERT INTO appointment_events (appointment_id, event_type, event_time, actor_role, actor_id, details_json)
+                VALUES (?, 'assigned', ?, 'manager', ?, ?)
+                ''',
+                (db_id, now, data.get('actor_id', ''), json.dumps({'source': 'manager_assign_existing'}))
+            )
+            return jsonify({'success': True, 'booking_id': f'b{db_id}'})
+
+        if not all([client_name, date, time]):
+            return jsonify({'success': False, 'error': 'missing required fields'}), 400
+        try:
+            datetime.strptime(date, '%Y-%m-%d')
+            datetime.strptime(time, '%H:%M')
+            duration = int(duration)
+        except Exception:
+            return jsonify({'success': False, 'error': 'invalid time/duration format'}), 400
+
         if _conflict_exists(conn, employee_id, date, time, duration):
             return jsonify({'success': False, 'error': 'time slot conflict'}), 409
 
@@ -879,10 +929,60 @@ def api_manager_assign_booking():
             INSERT INTO appointment_events (appointment_id, event_type, event_time, actor_role, actor_id, details_json)
             VALUES (?, 'assigned', ?, 'manager', ?, ?)
             ''',
-            (appt_id, now, data.get('actor_id', ''), json.dumps({'source': 'manager_assign'}))
+            (appt_id, now, data.get('actor_id', ''), json.dumps({'source': 'manager_assign_new'}))
         )
 
     return jsonify({'success': True, 'booking_id': f'b{appt_id}'})
+
+
+@app.route('/api/manager/unassigned-bookings', methods=['GET'])
+def api_manager_unassigned_bookings():
+    date = request.args.get('date')
+    query = "SELECT * FROM appointments WHERE status='booked' AND employee_id IS NULL"
+    params = []
+    if date:
+        query += ' AND date=?'
+        params.append(date)
+    query += ' ORDER BY date, time'
+    with get_db() as conn:
+        rows = conn.execute(query, tuple(params)).fetchall()
+    out = [dict(r) for r in rows]
+    for r in out:
+        r['id'] = f"b{r['id']}"
+    return jsonify({'success': True, 'bookings': out})
+
+
+@app.route('/api/manager/effective-availability', methods=['GET'])
+def api_manager_effective_availability():
+    employee_id = request.args.get('employee_id')
+    date = request.args.get('date')
+    if not employee_id or not date:
+        return jsonify({'success': False, 'error': 'employee_id and date required'}), 400
+
+    day_slots = generate_day_slots()
+    with get_db() as conn:
+        custom = conn.execute(
+            'SELECT time FROM employee_availability WHERE employee_id=? AND date=? ORDER BY time',
+            (employee_id, date)
+        ).fetchall()
+        available_times = set([r['time'] for r in custom]) if custom else set(day_slots)
+
+        taken_slots = set()
+        rows = conn.execute(
+            "SELECT time, duration FROM appointments WHERE employee_id=? AND date=? AND status='booked'",
+            (employee_id, date)
+        ).fetchall()
+        for r in rows:
+            booking_start = datetime.strptime(r['time'], '%H:%M')
+            booking_end = booking_start + timedelta(minutes=int(r['duration'] or 60))
+            for slot_time in day_slots:
+                slot_start = datetime.strptime(slot_time, '%H:%M')
+                slot_end = slot_start + timedelta(minutes=30)
+                if slot_start < booking_end and slot_end > booking_start:
+                    taken_slots.add(slot_time)
+
+    slots = [t for t in day_slots if t in available_times and t not in taken_slots]
+    return jsonify({'success': True, 'employee_id': employee_id, 'date': date, 'slots': slots})
 
 
 @app.route('/api/manager/create-employee', methods=['POST'])
@@ -932,13 +1032,17 @@ def api_manager_create_employee():
             ''',
             (username, password, name, employee_id)
         )
-        conn.execute(
-            '''
-            INSERT INTO appointment_events (appointment_id, event_type, event_time, actor_role, actor_id, details_json)
-            VALUES (NULL, 'employee_created', ?, 'manager', ?, ?)
-            ''',
-            (now, actor_id, json.dumps({'employee_id': employee_id, 'name': name, 'username': username}))
-        )
+        try:
+            conn.execute(
+                '''
+                INSERT INTO appointment_events (appointment_id, event_type, event_time, actor_role, actor_id, details_json)
+                VALUES (NULL, 'employee_created', ?, 'manager', ?, ?)
+                ''',
+                (now, actor_id, json.dumps({'employee_id': employee_id, 'name': name, 'username': username}))
+            )
+        except sqlite3.IntegrityError:
+            # Keep startup resilient if legacy DB constraints reject this optional audit event.
+            pass
 
     return jsonify({
         'success': True,
@@ -974,9 +1078,73 @@ def api_manager_list_employees():
     return jsonify({'success': True, 'employees': employees})
 
 
+def reset_all_clients_data():
+    """Delete all client accounts and client-linked records from DB."""
+    with get_db() as conn:
+        conn.execute('DELETE FROM appointment_events WHERE actor_role = ?', ('client',))
+        conn.execute('DELETE FROM appointment_events WHERE actor_id IN (SELECT id FROM clients)')
+        conn.execute('DELETE FROM appointments WHERE client_id IN (SELECT id FROM clients)')
+        conn.execute("DELETE FROM users WHERE role='client'")
+        conn.execute('DELETE FROM clients')
+
+
+def seed_demo_unassigned_booking():
+    """Create one demo unassigned booking (employee_id NULL) if none exists."""
+    now = utcnow()
+    demo_date = (datetime.now().date() + timedelta(days=1)).isoformat()
+    demo_time = '10:00'
+
+    with get_db() as conn:
+        existing = conn.execute(
+            "SELECT id FROM appointments WHERE status='booked' AND employee_id IS NULL LIMIT 1"
+        ).fetchone()
+        if existing:
+            return
+
+        cur = conn.execute(
+            '''
+            INSERT INTO appointments
+            (employee_id, client_id, client_name, date, time, duration, status, email, phone, street, city, province, country, postal, notes, created_at, updated_at)
+            VALUES (NULL, ?, ?, ?, ?, ?, 'booked', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (
+                # Keep this unassigned booking independent from any client profile.
+                None,
+                'Demo Unassigned Client',
+                demo_date,
+                demo_time,
+                60,
+                'demo.unassigned@example.com',
+                '(438) 000-0000',
+                '100 Demo Street',
+                'Montreal',
+                'Quebec',
+                'Canada',
+                'H1A 1A1',
+                'Demo unassigned booking for manager assignment.',
+                now,
+                now,
+            )
+        )
+        appt_id = cur.lastrowid
+        try:
+            conn.execute(
+                '''
+                INSERT INTO appointment_events (appointment_id, event_type, event_time, actor_role, actor_id, details_json)
+                VALUES (?, 'created', ?, 'system', 'seed', ?)
+                ''',
+                (appt_id, now, json.dumps({'source': 'seed_demo_unassigned_booking'}))
+            )
+        except sqlite3.IntegrityError:
+            # Keep startup resilient if legacy DB constraints reject this optional audit event.
+            pass
+
+
 init_db()
 seed_demo_data()
 migrate_bookings_json_once()
+reset_all_clients_data()
+seed_demo_unassigned_booking()
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

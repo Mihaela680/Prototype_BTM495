@@ -154,6 +154,28 @@ main{padding:20px}
 .manager-btn{background:linear-gradient(135deg,#6B7280 0%,#4B5563 100%);color:#FFFFFF}
 .manager-btn:hover{background:linear-gradient(135deg,#4B5563 0%,#35424F 100%);box-shadow:0 4px 12px rgba(0,0,0,0.15)}
 
+/* Manager schedule sizing guards */
+#manager-schedule-content,
+#manager-schedule-content .card,
+.manager-view .card {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+#manager-weekly-bookings {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+#manager-weekly-bookings .day-cell {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 @media (max-width:720px){
   .controls{flex-direction:column;align-items:stretch}
   .services{flex-direction:column;align-items:center}
