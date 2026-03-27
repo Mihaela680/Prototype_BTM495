@@ -34,6 +34,9 @@ DEMO_USERS = {
     'mgr1': {'password': 'pass', 'role': 'manager', 'name': 'Manager One', 'id': 'mgr1', 'birthdate': '1980-01-01', 'sin': '111-222-333'}
 }
 
+def openBooking():
+    pass
+
 
 def get_db():
     conn = sqlite3.connect(DB_FILE)
