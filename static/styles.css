@@ -176,6 +176,27 @@ main{padding:20px}
   box-sizing: border-box;
 }
 
+/* Unassigned jobs panel */
+#manager-unassigned-panel {
+  background: #fff;
+  border: 1px solid #dde5f0;
+  border-radius: 10px;
+  padding: 16px;
+  align-self: start;
+}
+
+/* Success assignment banner */
+#assign-success-banner {
+  display: flex !important;
+  animation: fadeInDown .3s ease;
+}
+#assign-success-banner[hidden] { display: none !important; }
+
+@keyframes fadeInDown {
+  from { opacity:0; transform:translateY(-8px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
 @media (max-width:720px){
   .controls{flex-direction:column;align-items:stretch}
   .services{flex-direction:column;align-items:center}
@@ -183,4 +204,5 @@ main{padding:20px}
   #weekly-bookings{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
   .user-type-buttons{flex-direction:column;gap:12px}
   .user-type-btn{min-width:100%}
+  #manager-schedule-content > div[style*="grid"] { grid-template-columns: 1fr !important; }
 }

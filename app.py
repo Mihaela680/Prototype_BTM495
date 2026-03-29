@@ -152,6 +152,31 @@ def init_db():
                 '''
             )
 
+        # Fix broken FK on appointment_events (may reference appointments_old after migration)
+        appt_events_fk = conn.execute("PRAGMA foreign_key_list(appointment_events)").fetchall()
+        bad_fk = any(row['table'] == 'appointments_old' for row in appt_events_fk)
+        if bad_fk:
+            conn.executescript(
+                '''
+                CREATE TABLE IF NOT EXISTS appointment_events_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    appointment_id INTEGER,
+                    event_type TEXT NOT NULL,
+                    event_time TEXT NOT NULL,
+                    actor_role TEXT,
+                    actor_id TEXT,
+                    details_json TEXT,
+                    FOREIGN KEY(appointment_id) REFERENCES appointments(id)
+                );
+                INSERT OR IGNORE INTO appointment_events_new
+                    (id, appointment_id, event_type, event_time, actor_role, actor_id, details_json)
+                SELECT id, appointment_id, event_type, event_time, actor_role, actor_id, details_json
+                FROM appointment_events;
+                DROP TABLE appointment_events;
+                ALTER TABLE appointment_events_new RENAME TO appointment_events;
+                '''
+            )
+
 
 def seed_demo_data():
     now = utcnow()
@@ -484,52 +509,55 @@ def api_book():
         return jsonify({'success': False, 'error': 'invalid date/time/duration format'}), 400
 
     now = utcnow()
-    with get_db() as conn:
-        if employee_id and _conflict_exists(conn, employee_id, date, time, duration):
-            return jsonify({'success': False, 'error': 'time slot conflict'}), 409
+    try:
+        with get_db() as conn:
+            if employee_id and _conflict_exists(conn, employee_id, date, time, duration):
+                return jsonify({'success': False, 'error': 'time slot conflict'}), 409
 
-        if client_id:
-            conn.execute(
+            if client_id:
+                conn.execute(
+                    '''
+                    INSERT INTO clients (id, full_name, email, phone, street, city, province, country, postal_code, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(id) DO UPDATE SET
+                        full_name=excluded.full_name,
+                        email=excluded.email,
+                        phone=excluded.phone,
+                        street=excluded.street,
+                        city=excluded.city,
+                        province=excluded.province,
+                        country=excluded.country,
+                        postal_code=excluded.postal_code,
+                        updated_at=excluded.updated_at
+                    ''',
+                    (
+                        client_id, client_name, data.get('email', ''), data.get('phone', ''), data.get('street', ''),
+                        data.get('city', ''), data.get('province', ''), data.get('country', ''), data.get('postal', ''), now, now
+                    )
+                )
+
+            cur = conn.execute(
                 '''
-                INSERT INTO clients (id, full_name, email, phone, street, city, province, country, postal_code, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                    full_name=excluded.full_name,
-                    email=excluded.email,
-                    phone=excluded.phone,
-                    street=excluded.street,
-                    city=excluded.city,
-                    province=excluded.province,
-                    country=excluded.country,
-                    postal_code=excluded.postal_code,
-                    updated_at=excluded.updated_at
+                INSERT INTO appointments
+                (employee_id, client_id, client_name, date, time, duration, status, email, phone, street, city, province, country, postal, notes, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, 'booked', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''',
                 (
-                    client_id, client_name, data.get('email', ''), data.get('phone', ''), data.get('street', ''),
-                    data.get('city', ''), data.get('province', ''), data.get('country', ''), data.get('postal', ''), now, now
+                    employee_id, client_id, client_name, date, time, duration, data.get('email', ''), data.get('phone', ''),
+                    data.get('street', ''), data.get('city', ''), data.get('province', ''), data.get('country', ''),
+                    data.get('postal', ''), data.get('notes', ''), now, now
                 )
             )
-
-        cur = conn.execute(
-            '''
-            INSERT INTO appointments
-            (employee_id, client_id, client_name, date, time, duration, status, email, phone, street, city, province, country, postal, notes, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, 'booked', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''',
-            (
-                employee_id, client_id, client_name, date, time, duration, data.get('email', ''), data.get('phone', ''),
-                data.get('street', ''), data.get('city', ''), data.get('province', ''), data.get('country', ''),
-                data.get('postal', ''), data.get('notes', ''), now, now
+            appt_id = cur.lastrowid
+            conn.execute(
+                '''
+                INSERT INTO appointment_events (appointment_id, event_type, event_time, actor_role, actor_id, details_json)
+                VALUES (?, 'created', ?, ?, ?, ?)
+                ''',
+                (appt_id, now, data.get('actor_role', 'client'), data.get('actor_id', client_id or ''), json.dumps({'source': 'api_book'}))
             )
-        )
-        appt_id = cur.lastrowid
-        conn.execute(
-            '''
-            INSERT INTO appointment_events (appointment_id, event_type, event_time, actor_role, actor_id, details_json)
-            VALUES (?, 'created', ?, ?, ?, ?)
-            ''',
-            (appt_id, now, data.get('actor_role', 'client'), data.get('actor_id', client_id or ''), json.dumps({'source': 'api_book'}))
-        )
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Database error: {str(e)}'}), 500
 
     return jsonify({'success': True, 'booking_id': f'b{appt_id}'})
 
@@ -789,6 +817,50 @@ def api_select_schedule():
                     (employee_id, d, t)
                 )
     return jsonify({'success': True})
+
+
+@app.route('/api/manager/employees-workload', methods=['GET'])
+def api_manager_employees_workload():
+    """Return all active employees with their current booked hours and cap."""
+    week_start = request.args.get('week_start')  # optional YYYY-MM-DD (Monday)
+    job_duration = int(request.args.get('job_duration', 60))  # minutes of the job to be assigned
+    with get_db() as conn:
+        employees = conn.execute(
+            "SELECT id, name, workload_hours FROM employees WHERE is_active=1 ORDER BY name"
+        ).fetchall()
+        out = []
+        for emp in employees:
+            # Sum minutes of all booked appointments (optionally filtered to current week)
+            if week_start:
+                try:
+                    ws = datetime.strptime(week_start, '%Y-%m-%d')
+                    we = (ws + timedelta(days=6)).strftime('%Y-%m-%d')
+                    rows = conn.execute(
+                        "SELECT duration FROM appointments WHERE employee_id=? AND status='booked' AND date>=? AND date<=?",
+                        (emp['id'], week_start, we)
+                    ).fetchall()
+                except Exception:
+                    rows = conn.execute(
+                        "SELECT duration FROM appointments WHERE employee_id=? AND status='booked'",
+                        (emp['id'],)
+                    ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT duration FROM appointments WHERE employee_id=? AND status='booked'",
+                    (emp['id'],)
+                ).fetchall()
+            booked_minutes = sum(int(r['duration'] or 60) for r in rows)
+            booked_hours = round(booked_minutes / 60.0, 1)
+            cap = int(emp['workload_hours'] or 40)
+            would_exceed = (booked_minutes + job_duration) > (cap * 60)
+            out.append({
+                'id': emp['id'],
+                'name': emp['name'],
+                'booked_hours': booked_hours,
+                'cap_hours': cap,
+                'would_exceed': would_exceed
+            })
+    return jsonify({'success': True, 'employees': out})
 
 
 @app.route('/api/manager/summary', methods=['GET'])
@@ -1089,55 +1161,103 @@ def reset_all_clients_data():
 
 
 def seed_demo_unassigned_booking():
-    """Create one demo unassigned booking (employee_id NULL) if none exists."""
+    """Ensure three demo unassigned bookings (employee_id NULL) exist for manager assignment."""
     now = utcnow()
-    demo_date = (datetime.now().date() + timedelta(days=1)).isoformat()
-    demo_time = '10:00'
+    base_date = datetime.now().date() + timedelta(days=1)
+    demo_jobs = [
+        {
+            'client_name': 'Demo Unassigned Client',
+            'date': base_date.isoformat(),
+            'time': '10:00',
+            'duration': 60,
+            'email': 'demo.unassigned@example.com',
+            'phone': '(438) 000-0000',
+            'street': '100 Demo Street',
+            'city': 'Montreal',
+            'province': 'Quebec',
+            'country': 'Canada',
+            'postal': 'H1A 1A1',
+            'notes': 'Demo unassigned booking for manager assignment.'
+        },
+        {
+            'client_name': 'Demo Condo Client',
+            'date': (base_date + timedelta(days=1)).isoformat(),
+            'time': '11:30',
+            'duration': 90,
+            'email': 'demo.condo@example.com',
+            'phone': '(514) 111-2233',
+            'street': '250 Lakeshore Road',
+            'city': 'Dorval',
+            'province': 'Quebec',
+            'country': 'Canada',
+            'postal': 'H9S 2B4',
+            'notes': 'Condo window cleaning estimate awaiting manager assignment.'
+        },
+        {
+            'client_name': 'Demo Storefront Client',
+            'date': (base_date + timedelta(days=2)).isoformat(),
+            'time': '14:00',
+            'duration': 120,
+            'email': 'demo.storefront@example.com',
+            'phone': '(450) 222-3344',
+            'street': '75 Market Avenue',
+            'city': 'Pointe-Claire',
+            'province': 'Quebec',
+            'country': 'Canada',
+            'postal': 'H9R 4S8',
+            'notes': 'Storefront cleaning job pending employee assignment.'
+        }
+    ]
 
     with get_db() as conn:
-        existing = conn.execute(
-            "SELECT id FROM appointments WHERE status='booked' AND employee_id IS NULL LIMIT 1"
-        ).fetchone()
-        if existing:
-            return
-
-        cur = conn.execute(
-            '''
-            INSERT INTO appointments
-            (employee_id, client_id, client_name, date, time, duration, status, email, phone, street, city, province, country, postal, notes, created_at, updated_at)
-            VALUES (NULL, ?, ?, ?, ?, ?, 'booked', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''',
-            (
-                # Keep this unassigned booking independent from any client profile.
-                None,
-                'Demo Unassigned Client',
-                demo_date,
-                demo_time,
-                60,
-                'demo.unassigned@example.com',
-                '(438) 000-0000',
-                '100 Demo Street',
-                'Montreal',
-                'Quebec',
-                'Canada',
-                'H1A 1A1',
-                'Demo unassigned booking for manager assignment.',
-                now,
-                now,
-            )
-        )
-        appt_id = cur.lastrowid
-        try:
-            conn.execute(
+        for job in demo_jobs:
+            existing = conn.execute(
                 '''
-                INSERT INTO appointment_events (appointment_id, event_type, event_time, actor_role, actor_id, details_json)
-                VALUES (?, 'created', ?, 'system', 'seed', ?)
+                SELECT id FROM appointments
+                WHERE status='booked' AND employee_id IS NULL AND client_name=? AND date=? AND time=?
+                LIMIT 1
                 ''',
-                (appt_id, now, json.dumps({'source': 'seed_demo_unassigned_booking'}))
+                (job['client_name'], job['date'], job['time'])
+            ).fetchone()
+            if existing:
+                continue
+
+            cur = conn.execute(
+                '''
+                INSERT INTO appointments
+                (employee_id, client_id, client_name, date, time, duration, status, email, phone, street, city, province, country, postal, notes, created_at, updated_at)
+                VALUES (NULL, ?, ?, ?, ?, ?, 'booked', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''',
+                (
+                    None,
+                    job['client_name'],
+                    job['date'],
+                    job['time'],
+                    job['duration'],
+                    job['email'],
+                    job['phone'],
+                    job['street'],
+                    job['city'],
+                    job['province'],
+                    job['country'],
+                    job['postal'],
+                    job['notes'],
+                    now,
+                    now,
+                )
             )
-        except sqlite3.IntegrityError:
-            # Keep startup resilient if legacy DB constraints reject this optional audit event.
-            pass
+            appt_id = cur.lastrowid
+            try:
+                conn.execute(
+                    '''
+                    INSERT INTO appointment_events (appointment_id, event_type, event_time, actor_role, actor_id, details_json)
+                    VALUES (?, 'created', ?, 'system', 'seed', ?)
+                    ''',
+                    (appt_id, now, json.dumps({'source': 'seed_demo_unassigned_booking'}))
+                )
+            except sqlite3.IntegrityError:
+                # Keep startup resilient if legacy DB constraints reject this optional audit event.
+                pass
 
 
 init_db()
@@ -1147,5 +1267,5 @@ reset_all_clients_data()
 seed_demo_unassigned_booking()
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5001)
 
