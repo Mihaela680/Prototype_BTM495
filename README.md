@@ -1,6 +1,6 @@
 # 🏢 Cleaning Business Appointment Booking System
 
-A professional web application for managing cleaning service appointments with client and employee views.
+A professional web application for managing cleaning service appointments with client, employee, and manager views.
 
 ## ✨ Features
 
@@ -19,6 +19,7 @@ A professional web application for managing cleaning service appointments with c
   - `client1` / `pass` (Client account)
   - `emp1` / `pass` (Employee account)
   - `emp2` / `pass` (Employee account)
+  - `mgr1` / `pass` (Manager account)
 - Session management with sessionStorage
 - Secure credential handling
 
@@ -43,6 +44,22 @@ A professional web application for managing cleaning service appointments with c
 - Responsive layout for all devices
 - Accessible form inputs with focus states
 - Clean typography with hierarchy
+
+### 👔 Manager Dashboard
+**Dashboard Tab:**
+- Employee summary cards displaying total bookings and hours per employee
+- Real-time employee performance metrics at a glance
+
+**Schedule Tab:**
+- View weekly bookings for any selected employee
+- Assign new client bookings to employees via a modal form
+- Comprehensive client information capture (name, email, phone, full address)
+- Booking duration customization (30-minute increments)
+
+**Reports Tab:**
+- Generate reports with optional start and end date filtering
+- Filter by individual employee or view all employees at once
+- Multiple report format support
 
 ## 🚀 Quick Start
 
@@ -78,13 +95,15 @@ http://localhost:5000
 Prototype_BTM495/
 ├── app.py                      # Flask backend application
 ├── requirements.txt            # Python dependencies
+├── bookings.json               # JSON-based booking persistence
+├── workload.json               # Employee workload data
 ├── static/
 │   ├── script.js              # Frontend JavaScript (navigation & booking)
 │   └── styles.css             # Main stylesheet (professional design)
 ├── templates/
 │   ├── index.html             # Home page
 │   ├── login.html             # Login page
-│   └── calendar.html          # Calendar booking page
+│   └── calendar.html          # Calendar booking page (client, employee & manager views)
 ├── styles.css                 # Backup stylesheet
 ├── script.js                  # Backup JavaScript
 ├── FEATURES.md                # Detailed feature documentation
@@ -113,15 +132,24 @@ Prototype_BTM495/
            │
     Submit: Valid Credentials
            │
-           ▼
-┌─────────────────────┐
-│  Calendar Page      │
-│  Service Selection  │
-│  Employee Select    │
-│  Date Picker        │
-│  Time Slots         │
-│  Book Appointment   │
-└─────────────────────┘
+     ┌─────┴──────────────────────┐
+     │                            │
+     ▼ (client/employee)          ▼ (manager)
+┌─────────────────────┐  ┌────────────────────────┐
+│  Calendar Page      │  │  Manager View           │
+│  Service Selection  │  │  ┌──────────────────┐   │
+│  Employee Select    │  │  │ Dashboard Tab    │   │
+│  Date Picker        │  │  │ Employee Summary │   │
+│  Time Slots         │  │  ├──────────────────┤   │
+│  Book Appointment   │  │  │ Schedule Tab     │   │
+└─────────────────────┘  │  │ Weekly Bookings  │   │
+                         │  │ Assign Bookings  │   │
+                         │  ├──────────────────┤   │
+                         │  │ Reports Tab      │   │
+                         │  │ Date Filtering   │   │
+                         │  │ Export Reports   │   │
+                         │  └──────────────────┘   │
+                         └────────────────────────┘
 ```
 
 ## 🔗 API Endpoints
@@ -153,7 +181,29 @@ Prototype_BTM495/
 **GET /api/bookings**
 - Retrieves appointments
 - Optional filters: employee_id, week_start
-- Used by: Employee/Manager views (future)
+- Used by: Employee and Manager views
+
+### Manager
+**GET /api/manager/summary**
+- Returns performance summary for all employees
+- Includes total bookings and total hours per employee
+- Used by: Manager Dashboard tab
+
+**GET /api/manager/booking-details**
+- Parameters: `booking_id`
+- Returns full details for a specific booking
+- Used by: Manager Schedule tab
+
+**GET /api/manager/reports**
+- Parameters: `employee_id` (optional), `start_date` (optional, YYYY-MM-DD), `end_date` (optional, YYYY-MM-DD)
+- Generates reports filtered by employee and/or date range
+- Used by: Manager Reports tab
+
+**POST /api/manager/assign-booking**
+- Creates and assigns a new booking to an employee
+- Body: employee_id, date, time, duration, client_name, client_email, client_phone, client_address, notes
+- Returns: booking confirmation
+- Used by: Manager Schedule tab (Assign Booking modal)
 
 ## 🎨 Design Highlights
 
@@ -199,12 +249,21 @@ Prototype_BTM495/
    - [ ] Booked slots become unavailable
    - [ ] Confirmation message appears
 
+4. **Manager Dashboard**
+   - [ ] Login as `mgr1` / `pass` redirects to manager view
+   - [ ] Dashboard tab shows employee summary cards with total bookings and hours
+   - [ ] Schedule tab loads weekly bookings for selected employee
+   - [ ] "Assign Booking" modal opens and submits successfully (`POST /api/manager/assign-booking`)
+   - [ ] Reports tab generates report; date range filters apply correctly
+   - [ ] Filter by individual employee works in reports
+
 ### Demo Credentials
 | Username | Password | Role |
 |----------|----------|------|
 | client1 | pass | Client |
 | emp1 | pass | Employee |
 | emp2 | pass | Employee |
+| mgr1 | pass | Manager |
 
 ## 📊 Data Base (Static)
 
@@ -252,7 +311,7 @@ Bookings are stored in `bookings.json` file with structure:
 
 Planned features:
 - [ ] Employee dashboard (view assigned appointments)
-- [ ] Manager interface (manage all appointments)
+- [x] Manager interface (manage all appointments) ✅ **Completed in v2.0**
 - [ ] Email notifications
 - [ ] Appointment cancellation/rescheduling
 - [ ] Service pricing
@@ -310,41 +369,10 @@ This is a prototype/demonstration application.
 
 ## 👨‍💻 Version
 
-**Current Version**: 1.0  
-**Last Updated**: February 22, 2026  
+**Current Version**: 2.0  
+**Last Updated**: March 9, 2026  
 **Status**: Fully Functional ✅
 
 ---
 
 **Ready to use!** Start the server and navigate to `http://localhost:5000` to test the application.
-2. The diagram is static but the JS redraws connections on resize.
-
-Notes:
-- This is intentionally minimal for an assignment. You can add hover tooltips or make boxes draggable if needed.
-
-## Run the demo Flask app
-
-1. Create a virtual environment and install dependencies:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-2. Start the server:
-
-```bash
-python app.py
-```
-
-3. Open `http://127.0.0.1:5000/` in your browser.
-
-Demo credentials:
-- client1 / pass (client)
-- emp1 / pass (employee)
-- emp2 / pass (employee)
-
-Notes:
-- Bookings are stored in `bookings.json` in the project root (simple JSON persistence).
-- The homepage shows business contact details and service boxes; double-click the "Log in" button to go to the login page.
