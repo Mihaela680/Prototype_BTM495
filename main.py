@@ -1,17 +1,21 @@
-# This is a sample Python script.
+from app import app
+from database import (
+    init_db,
+    migrate_bookings_json_once,
+    reset_all_clients_data,
+    seed_demo_data,
+    seed_demo_unassigned_booking,
+)
 
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
+
+def bootstrap():
+    init_db()
+    seed_demo_data()
+    migrate_bookings_json_once()
+    reset_all_clients_data()
+    seed_demo_unassigned_booking()
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press ⌘F8 to toggle the breakpoint.
-
-
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
-
+    bootstrap()
+    app.run(debug=True, port=5001)
